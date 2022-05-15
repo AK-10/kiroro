@@ -1,24 +1,29 @@
-use std::io::{stdin, stdout, Write};
+use std::io::{stdin, stdout, Read, Write};
 use termion::cursor::*;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 
 pub struct EditorConfig {
-    rows: u16,
+    #[allow(dead_code)]
     cols: u16,
+    rows: u16,
 }
 
 impl EditorConfig {
-    pub fn new(rows: u16, cols: u16) -> Self {
-        Self { rows, cols }
+    pub fn new(cols: u16, rows: u16) -> Self {
+        Self { cols, rows }
     }
 }
 
-// fn ctrl_key(key: u8) -> u8 {
-//     // In ASCII character code, control characters that are not displayed as characters
-//     // are assigned to 0~31(0000_0000 ~ 0001_1111)
-//     key & 0b0001_1111
-// }
+// In ASCII character code, control characters that are not displayed as characters
+// are assigned to 0~31(0000_0000 ~ 0001_1111)
+// so ctrl char code can be get by bit and
+// example:
+// b'q' & 0b0001_1111
+#[allow(dead_code)]
+fn ctrl_key(key: u8) -> u8 {
+    key & 0b001_1111
+}
 
 fn reset_screen_on_end() {
     print!("\x1b[2j");
@@ -52,19 +57,50 @@ fn refresh_screen(rows: u16) {
     stdout().flush().unwrap();
 }
 
+// return (col, row)
+#[allow(dead_code)]
+fn get_cursor_pos() -> (u16, u16) {
+    // get terminal status by \x1b[6n (https://vt100.net/docs/vt100-ug/chapter3.html#DSR)
+    // temrinal responses to stdin (http://vt100.net/docs/vt100-ug/chapter3.html#CPR)
+    // like `\x1b[{row};{col}R`
+    // after print \x1b[6n, parse response
+    print!("\x1b[6n");
+    print!("\r\n");
+
+    let mut response = Vec::<u8>::new();
+
+    for b in stdin().bytes() {
+        match b.unwrap() {
+            b'\x1b' | b'[' => {}
+            b'R' => break,
+            b => response.push(b),
+        }
+    }
+    let row_col = String::from_utf8(response).unwrap();
+    let row_col = row_col.splitn(2, ';').collect::<Vec<&str>>();
+    let row_col: Vec<u16> = row_col
+        .iter()
+        .map(|num_str| num_str.parse::<u16>().unwrap())
+        .collect();
+
+    (row_col[1], row_col[0])
+}
+
+// return (col, row)
 fn get_window_size() -> (u16, u16) {
     match termion::terminal_size() {
         Ok(ts) => ts,
         Err(_) => {
             // get termsize manually
             // move cursor bottom right
-            // then, get cursor position
             // \x1b[nC (n: natural number) move cursor to right direction amount of n
             // \x1b[nB (n: natural number) move cursor to bottom direction amount of n
             // print!("\x1b[999C\x1b[999B");
             print!("{}", termion::cursor::Goto(999, 999));
             stdout().flush().unwrap();
 
+            // then, get cursor position
+            // get_cursor_pos()
             stdout().cursor_pos().unwrap()
         }
     }
@@ -96,11 +132,20 @@ fn main() {
     for k in stdin.keys() {
         match k {
             Ok(k) => {
-                if k == termion::event::Key::Ctrl('q') {
-                    reset_screen_on_end();
-                    break
+                match k {
+                    // if k == ctrl_key(b'q')
+                    termion::event::Key::Ctrl('q') => {
+                        reset_screen_on_end();
+                        break;
+                    }
+                    termion::event::Key::Ctrl(c) => {
+                        println!("{}\r", c);
+                    }
+                    termion::event::Key::Char(c) => {
+                        println!("{} ({})\r", c as u8, c);
+                    }
+                    _ => println!("{:?}\r", k),
                 }
-                println!("{:?}\r", k);
             }
             Err(e) => {
                 reset_screen_on_end();
@@ -109,28 +154,4 @@ fn main() {
         }
         refresh_screen(0);
     }
-    // for b in stdin.bytes() {
-    //     match b {
-    //         Ok(c) => {
-    //             // \r is carriage return(CR)
-    //             // CR control character moves cursor to beginning of line
-    //             if c.is_ascii_control() {
-    //                 println!("{}\r", c);
-    //             } else {
-    //                 println!("{} ('{}') \r", c, c as char);
-    //             }
-
-    //             if c == ctrl_key(b'q') {
-    //                 reset_screen_on_end();
-    //                 break;
-    //             }
-    //         }
-    //         Err(e) => {
-    //             reset_screen_on_end();
-    //             panic!("{}", e)
-    //         }
-    //     }
-
-    //     refresh_screen(0);
-    // }
 }
