@@ -1,3 +1,5 @@
+const VERSION: &str = "0.0.1";
+
 use std::io::{stdin, stdout, Read, Write};
 use termion::cursor::*;
 use termion::input::TermRead;
@@ -31,29 +33,50 @@ fn reset_screen_on_end() {
     stdout().flush().unwrap();
 }
 
-fn editor_draw_rows(rows: u16) {
-    // draw terminal rows numbe
-    // for now 24
-    for _ in 0..rows {
-        print!("~\r\n");
-    }
+fn editor_draw_rows(rows: u16, cols: u16) {
+    // draw `~` terminal rows number
+    (0..rows).for_each(|i| {
+        if i == rows / 3 {
+            let msg = format!("kiroro editor -- version {}", VERSION);
+            let msg_len = msg.len().min(cols as usize);
+            let padding_space_count = (cols as usize - msg_len) / 2;
+            print!(
+                "~{}{}",
+                " ".repeat(padding_space_count - 1),
+                &msg[..msg_len]
+            );
+        } else {
+            print!("~");
+        }
+
+        // \1b[K is erase in line
+        // erase a line on current cursor
+        print!("\x1b[K");
+        if i < rows - 1 {
+            print!("\r\n");
+        }
+    });
     stdout().flush().unwrap();
 }
 
-fn refresh_screen(rows: u16) {
+fn refresh_screen(rows: u16, cols: u16) {
     // \x1b is escape character
     // this is write escape sequence to terminal
-    // \x1b[2j
+    // example: \x1b[2j
     // \x1b = ESC
     // [    = ANSI control sequence indtoducer
     // 2j   = erase entire screen
-    print!("\x1b[2j");
+
+    // set mode; change to ANSI/VT52 mode
+    print!("\x1b[?25l");
     // moves cursor to home position (1, 1)
     print!("\x1b[H");
 
-    editor_draw_rows(rows);
+    editor_draw_rows(rows, cols);
 
     print!("\x1b[H");
+    // reset mode (change to screen mode)
+    print!("\x1b[?25h");
     stdout().flush().unwrap();
 }
 
@@ -69,6 +92,8 @@ fn get_cursor_pos() -> (u16, u16) {
 
     let mut response = Vec::<u8>::new();
 
+    // parse terminal response
+    // get cols and rows from `\x1b[{cols};{rows}`
     for b in stdin().bytes() {
         match b.unwrap() {
             b'\x1b' | b'[' => {}
@@ -128,7 +153,7 @@ fn main() {
     let term_size = get_window_size();
     let editor_config = EditorConfig::new(term_size.0, term_size.1);
 
-    refresh_screen(editor_config.rows);
+    refresh_screen(editor_config.rows, editor_config.cols);
     for k in stdin.keys() {
         match k {
             Ok(k) => {
@@ -152,6 +177,6 @@ fn main() {
                 panic!("{}", e);
             }
         }
-        refresh_screen(0);
+        refresh_screen(0, 0);
     }
 }
