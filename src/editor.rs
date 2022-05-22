@@ -1,7 +1,7 @@
 use std::io::{stdin, stdout, Read, Stdout, Write};
 
-use termion;
 use termion::cursor::*;
+use termion::event;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::raw::RawTerminal;
@@ -23,6 +23,8 @@ impl EditorConfig {
 pub struct Editor {
     config: EditorConfig,
     out: RawTerminal<Stdout>,
+    cursor_x: usize,
+    cursor_y: usize,
 }
 
 impl Editor {
@@ -49,8 +51,8 @@ impl Editor {
         Self {
             config,
             out,
-            // cursor_x: 0,
-            // cursor_y: 0,
+            cursor_x: 0,
+            cursor_y: 0,
         }
     }
 
@@ -67,23 +69,40 @@ impl Editor {
     pub fn run(&mut self) {
         self.refresh_screen();
         for k in stdin().keys() {
-            self.refresh_screen();
             match k {
                 Ok(k) => {
                     match k {
                         // if k == ctrl_key(b'q')
-                        termion::event::Key::Ctrl('q') => {
+                        event::Key::Ctrl('q') => {
                             self.reset_screen_on_end();
                             break;
                         }
-                        termion::event::Key::Ctrl(c) => {
+                        // up Up Arrow is \x1b[A
+                        event::Key::Char('w') | event::Key::Up => {
+                            self.up();
+                        }
+                        // left Left Arrow is \x1b[D
+                        event::Key::Char('a') | event::Key::Left => {
+                            self.left();
+                        }
+                        // down Down Arrow is \x1b[B
+                        event::Key::Char('s') | event::Key::Down => {
+                            self.down();
+                        }
+                        // right Right Arrow is \x1b[C
+                        event::Key::Char('d') | event::Key::Right => {
+                            self.right();
+                        }
+                        event::Key::Ctrl(c) => {
                             println!("{}\r", c);
                         }
-                        termion::event::Key::Char(c) => {
+                        event::Key::Char(c) => {
                             println!("{} ({})\r", c as u8, c);
                         }
                         _ => println!("{:?}\r", k),
                     }
+
+                    self.refresh_screen();
                 }
                 Err(e) => {
                     self.reset_screen_on_end();
@@ -166,7 +185,10 @@ impl Editor {
 
         self.draw_rows();
 
-        print!("\x1b[H");
+        // set cursor position current state of cursor
+        // \x1b[{line};{column}
+        print!("\x1b[{};{}H", self.cursor_y + 1, self.cursor_x + 1);
+
         // reset mode (change to screen mode)
         print!("\x1b[?25h");
         self.out.flush().unwrap();
@@ -198,5 +220,27 @@ impl Editor {
             }
         });
         self.out.flush().unwrap();
+    }
+
+    fn up(&mut self) {
+        if 0 < self.cursor_y {
+            self.cursor_y -= 1;
+        }
+    }
+
+    fn down(&mut self) {
+        self.cursor_y += 1;
+    }
+
+    fn left(&mut self) {
+        if 0 < self.cursor_x {
+            self.cursor_x -= 1;
+        }
+    }
+
+
+    fn right(&mut self) {
+        self.cursor_x += 1;
+
     }
 }
