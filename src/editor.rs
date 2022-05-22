@@ -1,3 +1,4 @@
+use std::fs::File;
 use std::io::{stdin, stdout, Read, Stdout, Write};
 
 use termion::cursor::*;
@@ -10,12 +11,12 @@ use crate::VERSION;
 
 pub struct EditorConfig {
     #[allow(dead_code)]
-    pub cols: u16,
-    pub rows: u16,
+    pub cols: usize,
+    pub rows: usize,
 }
 
 impl EditorConfig {
-    pub fn new(cols: u16, rows: u16) -> Self {
+    pub fn new(cols: usize, rows: usize) -> Self {
         Self { cols, rows }
     }
 }
@@ -25,6 +26,8 @@ pub struct Editor {
     out: RawTerminal<Stdout>,
     cursor_x: usize,
     cursor_y: usize,
+    row_content: String,
+    num_rows: usize,
 }
 
 impl Editor {
@@ -46,13 +49,15 @@ impl Editor {
         // raw_terminal_attr: https://github.com/redox-os/termion/blob/8054e082b01c3f45f89f0db96bc374f1e378deb1/src/sys/unix/attr.rs#L17-L19
         let mut out = stdout().into_raw_mode().unwrap();
         let (cols, rows) = Self::get_window_size(&mut out);
-        let config = EditorConfig::new(cols, rows);
+        let config = EditorConfig::new(cols.into(), rows.into());
 
         Self {
             config,
             out,
             cursor_x: 0,
             cursor_y: 0,
+            row_content: String::new(),
+            num_rows: 0,
         }
     }
 
@@ -66,7 +71,12 @@ impl Editor {
         key & 0b001_1111
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self, path: Option<&String>) {
+        match path {
+            Some(path) => self.open(path),
+            _ => {}
+        };
+
         self.refresh_screen();
         for k in stdin().keys() {
             match k {
@@ -78,21 +88,19 @@ impl Editor {
                             break;
                         }
                         // up Up Arrow is \x1b[A
-                        event::Key::Char('w') | event::Key::Up => {
-                            self.up();
-                        }
-                        // left Left Arrow is \x1b[D
-                        event::Key::Char('a') | event::Key::Left => {
-                            self.left();
-                        }
-                        // down Down Arrow is \x1b[B
-                        event::Key::Char('s') | event::Key::Down => {
-                            self.down();
-                        }
-                        // right Right Arrow is \x1b[C
-                        event::Key::Char('d') | event::Key::Right => {
-                            self.right();
-                        }
+                        k @ (event::Key::Char('w')
+                        | event::Key::Up
+                        | event::Key::Char('a')
+                        | event::Key::Left
+                        | event::Key::Char('s')
+                        | event::Key::Down
+                        | event::Key::Char('d')
+                        | event::Key::Right
+                        | event::Key::PageUp
+                        | event::Key::PageDown
+                        | event::Key::Home
+                        | event::Key::End
+                        | event::Key::Delete) => self.update_cursor_state(&k),
                         event::Key::Ctrl(c) => {
                             println!("{}\r", c);
                         }
@@ -108,6 +116,74 @@ impl Editor {
                     self.reset_screen_on_end();
                     panic!("{}", e);
                 }
+            }
+        }
+    }
+
+    fn open(&mut self, path: &String) {
+        let mut f = File::open(path).unwrap();
+        // read_line returns string when \r or \n appear
+        // read only one row
+        let line = f.read_line().unwrap().unwrap();
+
+        self.row_content = line;
+        self.num_rows = 1;
+    }
+
+    fn update_cursor_state(&mut self, key: &event::Key) {
+        match key {
+            event::Key::Char('w') | event::Key::Up => {
+                if 0 < self.cursor_y {
+                    self.cursor_y -= 1;
+                }
+            }
+            // left Left Arrow is \x1b[D
+            event::Key::Char('a') | event::Key::Left => {
+                if 0 < self.cursor_x {
+                    self.cursor_x -= 1;
+                }
+            }
+            // down Down Arrow is \x1b[B
+            event::Key::Char('s') | event::Key::Down => {
+                if self.cursor_y < self.config.rows {
+                    self.cursor_y += 1;
+                }
+            }
+            // right Right Arrow is \x1b[C
+            event::Key::Char('d') | event::Key::Right => {
+                if self.cursor_x < self.config.cols {
+                    self.cursor_x += 1;
+                }
+            }
+            // pageup is \x1b[5~
+            event::Key::PageUp => {
+                if self.cursor_y <= self.config.rows {
+                    self.cursor_y = 0;
+                } else {
+                    self.cursor_y -= self.config.rows;
+                }
+            }
+            // pagedown is \x1b[6~
+            event::Key::PageDown => {
+                if self.cursor_y < self.config.rows {
+                    self.cursor_y = self.config.rows - 1;
+                }
+            }
+            // home depends on OS.
+            // colud be \x1b[1~, \x1b[7~, \x1b[H, \x1b[0H
+            event::Key::Home => {
+                self.cursor_x = 0;
+            }
+            // end depends on OS.
+            // colud be \x1b[4~, \x1b[8~, \x1b[F, \x1b[0F
+            event::Key::End => {
+                self.cursor_x = self.config.cols - 1;
+            }
+            // del is \x1b[3~
+            // do nothing as of now
+            event::Key::Delete => {}
+            _ => {
+                unreachable!("key is allowed only wasd, allow, pageup, pagedown")
             }
         }
     }
@@ -199,19 +275,25 @@ impl Editor {
         let rows = self.config.rows;
         let cols = self.config.cols;
         (0..rows).for_each(|i| {
-            if i == rows / 3 {
-                let msg = format!("kiroro editor -- version {}", VERSION);
-                let msg_len = msg.len().min(cols as usize);
-                let padding_space_count = (cols as usize - msg_len) / 2;
+            if i < self.num_rows {
                 print!(
-                    "~{}{}",
-                    " ".repeat(padding_space_count - 1),
-                    &msg[..msg_len]
-                );
+                    "{}",
+                    &self.row_content[..self.row_content.len().min(self.config.cols)]
+                )
             } else {
-                print!("~");
+                if i == rows / 3 && self.num_rows == 0 {
+                    let msg = format!("kiroro editor -- version {}", VERSION);
+                    let msg_len = msg.len().min(cols as usize);
+                    let padding_space_count = (cols as usize - msg_len) / 2;
+                    print!(
+                        "~{}{}",
+                        " ".repeat(padding_space_count - 1),
+                        &msg[..msg_len]
+                    );
+                } else {
+                    print!("~");
+                }
             }
-
             // \1b[K is erase in line
             // erase a line on current cursor
             print!("\x1b[K");
@@ -220,27 +302,5 @@ impl Editor {
             }
         });
         self.out.flush().unwrap();
-    }
-
-    fn up(&mut self) {
-        if 0 < self.cursor_y {
-            self.cursor_y -= 1;
-        }
-    }
-
-    fn down(&mut self) {
-        self.cursor_y += 1;
-    }
-
-    fn left(&mut self) {
-        if 0 < self.cursor_x {
-            self.cursor_x -= 1;
-        }
-    }
-
-
-    fn right(&mut self) {
-        self.cursor_x += 1;
-
     }
 }
