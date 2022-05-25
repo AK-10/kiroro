@@ -22,18 +22,20 @@ impl EditorConfig {
 }
 
 pub struct Content {
-    rows: Vec<String>
+    rows: Vec<String>,
 }
 
 impl Content {
-    pub fn new(rows: Vec<String >) -> Self {
+    pub fn new(rows: Vec<String>) -> Self {
         Content { rows }
     }
 }
 
 impl Default for Content {
     fn default() -> Self {
-        Content { rows: Vec::<String>::new() }
+        Content {
+            rows: Vec::<String>::new(),
+        }
     }
 }
 
@@ -103,7 +105,6 @@ impl Editor {
                             self.reset_screen_on_end();
                             break;
                         }
-                        // up Up Arrow is \x1b[A
                         k @ (event::Key::Char('w')
                         | event::Key::Up
                         | event::Key::Char('a')
@@ -117,12 +118,6 @@ impl Editor {
                         | event::Key::Home
                         | event::Key::End
                         | event::Key::Delete) => self.update_cursor_state(&k),
-                        event::Key::Ctrl(c) => {
-                            println!("{}\r", c);
-                        }
-                        event::Key::Char(c) => {
-                            println!("{} ({})\r", c as u8, c);
-                        }
                         _ => println!("{:?}\r", k),
                     }
 
