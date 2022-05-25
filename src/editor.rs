@@ -21,12 +21,28 @@ impl EditorConfig {
     }
 }
 
+pub struct Content {
+    rows: Vec<String>
+}
+
+impl Content {
+    pub fn new(rows: Vec<String >) -> Self {
+        Content { rows }
+    }
+}
+
+impl Default for Content {
+    fn default() -> Self {
+        Content { rows: Vec::<String>::new() }
+    }
+}
+
 pub struct Editor {
     config: EditorConfig,
     out: RawTerminal<Stdout>,
     cursor_x: usize,
     cursor_y: usize,
-    row_content: String,
+    content: Option<Content>,
     num_rows: usize,
 }
 
@@ -56,7 +72,7 @@ impl Editor {
             out,
             cursor_x: 0,
             cursor_y: 0,
-            row_content: String::new(),
+            content: None,
             num_rows: 0,
         }
     }
@@ -124,10 +140,18 @@ impl Editor {
         let mut f = File::open(path).unwrap();
         // read_line returns string when \r or \n appear
         // read only one row
-        let line = f.read_line().unwrap().unwrap();
+        let mut content_string = String::with_capacity(4096);
+        let mut rows = Vec::<String>::new();
+        let mut num_rows = 0;
 
-        self.row_content = line;
-        self.num_rows = 1;
+        let _ = f.read_to_string(&mut content_string);
+        for l in content_string.lines() {
+            num_rows += 1;
+            rows.push(String::from(l));
+        }
+
+        self.content = Some(Content::new(rows));
+        self.num_rows = num_rows;
     }
 
     fn update_cursor_state(&mut self, key: &event::Key) {
@@ -276,10 +300,12 @@ impl Editor {
         let cols = self.config.cols;
         (0..rows).for_each(|i| {
             if i < self.num_rows {
-                print!(
-                    "{}",
-                    &self.row_content[..self.row_content.len().min(self.config.cols)]
-                )
+                if let Some(content) = &self.content {
+                    print!(
+                        "{}",
+                        &content.rows[i][..content.rows[i].len().min(self.config.cols)]
+                    )
+                }
             } else {
                 if i == rows / 3 && self.num_rows == 0 {
                     let msg = format!("kiroro editor -- version {}", VERSION);
