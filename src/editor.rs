@@ -47,6 +47,7 @@ pub struct Editor {
     content: Option<Content>,
     num_rows: usize,
     row_offset: usize,
+    col_offset: usize,
 }
 
 impl Editor {
@@ -78,6 +79,7 @@ impl Editor {
             content: None,
             num_rows: 0,
             row_offset: 0,
+            col_offset: 0,
         }
     }
 
@@ -172,9 +174,7 @@ impl Editor {
             }
             // right Right Arrow is \x1b[C
             event::Key::Char('d') | event::Key::Right => {
-                if self.cursor_x < self.config.cols {
-                    self.cursor_x += 1;
-                }
+                self.cursor_x += 1;
             }
             // pageup is \x1b[5~
             event::Key::PageUp => {
@@ -288,7 +288,11 @@ impl Editor {
         // cursor_y range is less than numrows
         // therefore, it may exceed the rows of the window
         // to solve this problem, draw the value (cursor_y - row_offset)
-        print!("\x1b[{};{}H", (self.cursor_y - self.row_offset) + 1, self.cursor_x + 1);
+        print!(
+            "\x1b[{};{}H",
+            (self.cursor_y - self.row_offset) + 1,
+            (self.cursor_x - self.col_offset) + 1
+        );
 
         // reset mode (change to screen mode)
         print!("\x1b[?25h");
@@ -301,10 +305,12 @@ impl Editor {
         let cols = self.config.cols;
         (0..rows).for_each(|i| {
             let filerow = i + self.row_offset;
+            print!("{}|{}|{}", filerow, self.num_rows, self.row_offset);
             if filerow < self.num_rows {
                 if let Some(content) = &self.content {
-                    let len = content.rows[filerow].len().min(self.config.cols);
-                    print!("{}", &content.rows[filerow][..len])
+                    let len = (content.rows[filerow].len() - self.col_offset).min(self.config.cols);
+                    // let len = content.rows[filerow].len() - self.col_offset;
+                    print!("{}", &content.rows[filerow][self.col_offset..len])
                 }
             } else {
                 if i == rows / 3 && self.num_rows == 0 {
@@ -331,11 +337,18 @@ impl Editor {
     }
 
     fn editor_scroll(&mut self) {
+        // vartical scroll
         if self.cursor_y < self.row_offset {
             self.row_offset = self.cursor_y;
         }
         if self.row_offset + self.config.rows <= self.cursor_y {
             self.row_offset = self.cursor_y - self.config.rows + 1;
         }
+
+        // horizontal scroll
+        if self.cursor_x < self.col_offset {
+            self.col_offset = self.cursor_x;
+        }
+        if self.col_offset + self.config.cols <= self.cursor_x {}
     }
 }
