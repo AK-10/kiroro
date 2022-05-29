@@ -7,6 +7,8 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::raw::RawTerminal;
 
+use std::num::Wrapping;
+
 use crate::VERSION;
 
 pub struct EditorConfig {
@@ -305,12 +307,17 @@ impl Editor {
         let cols = self.config.cols;
         (0..rows).for_each(|i| {
             let filerow = i + self.row_offset;
-            print!("{}|{}|{}", filerow, self.num_rows, self.row_offset);
             if filerow < self.num_rows {
                 if let Some(content) = &self.content {
-                    let len = (content.rows[filerow].len() - self.col_offset).min(self.config.cols);
-                    // let len = content.rows[filerow].len() - self.col_offset;
-                    print!("{}", &content.rows[filerow][self.col_offset..len])
+                    let range = if content.rows[filerow].len() < self.col_offset {
+                        // no content in display range
+                        0..0
+                    } else {
+                        let end = self.col_offset
+                            + (content.rows[filerow].len() - self.col_offset).min(cols);
+                        self.col_offset..end
+                    };
+                    print!("{}", &content.rows[filerow][range]);
                 }
             } else {
                 if i == rows / 3 && self.num_rows == 0 {
@@ -340,15 +347,15 @@ impl Editor {
         // vartical scroll
         if self.cursor_y < self.row_offset {
             self.row_offset = self.cursor_y;
-        }
-        if self.row_offset + self.config.rows <= self.cursor_y {
-            self.row_offset = self.cursor_y - self.config.rows + 1;
+        } else if self.row_offset + self.config.rows <= self.cursor_y {
+            self.row_offset += 1;
         }
 
         // horizontal scroll
         if self.cursor_x < self.col_offset {
             self.col_offset = self.cursor_x;
+        } else if self.col_offset + self.config.cols <= self.cursor_x {
+            self.col_offset += 1;
         }
-        if self.col_offset + self.config.cols <= self.cursor_x {}
     }
 }
