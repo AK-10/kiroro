@@ -7,8 +7,6 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::raw::RawTerminal;
 
-use std::num::Wrapping;
-
 use crate::VERSION;
 
 pub struct EditorConfig {
@@ -176,7 +174,11 @@ impl Editor {
             }
             // right Right Arrow is \x1b[C
             event::Key::Char('d') | event::Key::Right => {
-                self.cursor_x += 1;
+                if let Some(current_row) = self.current_row() {
+                    if self.cursor_x < current_row.len() - 1 {
+                        self.cursor_x += 1;
+                    }
+                }
             }
             // pageup is \x1b[5~
             event::Key::PageUp => {
@@ -357,5 +359,12 @@ impl Editor {
         } else if self.col_offset + self.config.cols <= self.cursor_x {
             self.col_offset += 1;
         }
+    }
+
+    fn current_row(&self) -> Option<&String> {
+        let content = &self.content;
+        content
+            .as_ref()
+            .and_then(|content| content.rows.get(self.cursor_y))
     }
 }
