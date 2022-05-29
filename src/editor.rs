@@ -46,6 +46,7 @@ pub struct Editor {
     cursor_y: usize,
     content: Option<Content>,
     num_rows: usize,
+    row_offset: usize,
 }
 
 impl Editor {
@@ -76,6 +77,7 @@ impl Editor {
             cursor_y: 0,
             content: None,
             num_rows: 0,
+            row_offset: 0,
         }
     }
 
@@ -164,7 +166,7 @@ impl Editor {
             }
             // down Down Arrow is \x1b[B
             event::Key::Char('s') | event::Key::Down => {
-                if self.cursor_y < self.config.rows {
+                if self.cursor_y < self.num_rows {
                     self.cursor_y += 1;
                 }
             }
@@ -266,6 +268,7 @@ impl Editor {
     }
 
     fn refresh_screen(&mut self) {
+        self.editor_scroll();
         // \x1b is escape character
         // this is write escape sequence to terminal
         // example: \x1b[2j
@@ -282,7 +285,10 @@ impl Editor {
 
         // set cursor position current state of cursor
         // \x1b[{line};{column}
-        print!("\x1b[{};{}H", self.cursor_y + 1, self.cursor_x + 1);
+        // cursor_y range is less than numrows
+        // therefore, it may exceed the rows of the window
+        // to solve this problem, draw the value (cursor_y - row_offset)
+        print!("\x1b[{};{}H", (self.cursor_y - self.row_offset) + 1, self.cursor_x + 1);
 
         // reset mode (change to screen mode)
         print!("\x1b[?25h");
@@ -294,12 +300,11 @@ impl Editor {
         let rows = self.config.rows;
         let cols = self.config.cols;
         (0..rows).for_each(|i| {
-            if i < self.num_rows {
+            let filerow = i + self.row_offset;
+            if filerow < self.num_rows {
                 if let Some(content) = &self.content {
-                    print!(
-                        "{}",
-                        &content.rows[i][..content.rows[i].len().min(self.config.cols)]
-                    )
+                    let len = content.rows[filerow].len().min(self.config.cols);
+                    print!("{}", &content.rows[filerow][..len])
                 }
             } else {
                 if i == rows / 3 && self.num_rows == 0 {
@@ -323,5 +328,14 @@ impl Editor {
             }
         });
         self.out.flush().unwrap();
+    }
+
+    fn editor_scroll(&mut self) {
+        if self.cursor_y < self.row_offset {
+            self.row_offset = self.cursor_y;
+        }
+        if self.row_offset + self.config.rows <= self.cursor_y {
+            self.row_offset = self.cursor_y - self.config.rows + 1;
+        }
     }
 }
