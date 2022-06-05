@@ -175,7 +175,7 @@ impl Editor {
             // right Right Arrow is \x1b[C
             event::Key::Char('d') | event::Key::Right => {
                 if let Some(current_row) = self.current_row() {
-                    if self.cursor_x < current_row.len() - 1 {
+                    if  0 < current_row.len() && self.cursor_x < current_row.len() - 1 {
                         self.cursor_x += 1;
                     }
                 }
@@ -210,6 +210,17 @@ impl Editor {
             _ => {
                 unreachable!("key is allowed only wasd, allow, pageup, pagedown")
             }
+        }
+
+        // If there is a short line next to a long line, the cursor position can be moved to a place without characters.
+        // if cursor_x > row_len, cursor_x = row_len.
+        match self.current_row() {
+            Some(row) => {
+                if self.cursor_x > row.len() {
+                    self.cursor_x = row.len();
+                }
+            }
+            None => {}
         }
     }
 
