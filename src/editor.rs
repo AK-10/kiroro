@@ -164,6 +164,18 @@ impl Editor {
             event::Key::Char('a') | event::Key::Left => {
                 if 0 < self.cursor_x {
                     self.cursor_x -= 1;
+                } else if 0 < self.cursor_y {
+                    self.cursor_y -= 1;
+                    match self.current_row() {
+                        Some(current_row) => {
+                            self.cursor_x = if 0 < current_row.len() {
+                                current_row.len() - 1
+                            } else {
+                                0
+                            };
+                        }
+                        None => {}
+                    }
                 }
             }
             // down Down Arrow is \x1b[B
