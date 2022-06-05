@@ -187,8 +187,12 @@ impl Editor {
             // right Right Arrow is \x1b[C
             event::Key::Char('d') | event::Key::Right => {
                 if let Some(current_row) = self.current_row() {
-                    if  0 < current_row.len() && self.cursor_x < current_row.len() - 1 {
+                    let len = current_row.len();
+                    if 0 < len && self.cursor_x < len - 1 {
                         self.cursor_x += 1;
+                    } else {
+                        self.cursor_y += 1;
+                        self.cursor_x = 0;
                     }
                 }
             }
