@@ -7,10 +7,11 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::raw::RawTerminal;
 
+use crate::row::*;
+
 use crate::VERSION;
 
 pub struct EditorConfig {
-    #[allow(dead_code)]
     pub cols: usize,
     pub rows: usize,
 }
@@ -18,24 +19,6 @@ pub struct EditorConfig {
 impl EditorConfig {
     pub fn new(cols: usize, rows: usize) -> Self {
         Self { cols, rows }
-    }
-}
-
-pub struct Content {
-    rows: Vec<String>,
-}
-
-impl Content {
-    pub fn new(rows: Vec<String>) -> Self {
-        Content { rows }
-    }
-}
-
-impl Default for Content {
-    fn default() -> Self {
-        Content {
-            rows: Vec::<String>::new(),
-        }
     }
 }
 
@@ -140,17 +123,12 @@ impl Editor {
         // read_line returns string when \r or \n appear
         // read only one row
         let mut content_string = String::with_capacity(4096);
-        let mut rows = Vec::<String>::new();
-        let mut num_rows = 0;
 
         let _ = f.read_to_string(&mut content_string);
-        for l in content_string.lines() {
-            num_rows += 1;
-            rows.push(String::from(l));
-        }
+        let content = Content::from_text(&content_string);
 
-        self.content = Some(Content::new(rows));
-        self.num_rows = num_rows;
+        self.num_rows = content.rows.len();
+        self.content = Some(content);
     }
 
     fn update_cursor_state(&mut self, key: &event::Key) {
@@ -346,7 +324,7 @@ impl Editor {
                             + (content.rows[filerow].len() - self.col_offset).min(cols);
                         self.col_offset..end
                     };
-                    print!("{}", &content.rows[filerow][range]);
+                    print!("{}", &content.rows[filerow].sub_row(range));
                 }
             } else {
                 if i == rows / 3 && self.num_rows == 0 {
@@ -388,7 +366,7 @@ impl Editor {
         }
     }
 
-    fn current_row(&self) -> Option<&String> {
+    fn current_row(&self) -> Option<&Row> {
         let content = &self.content;
         content
             .as_ref()
