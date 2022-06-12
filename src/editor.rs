@@ -146,8 +146,8 @@ impl Editor {
                     self.cursor_y -= 1;
                     match self.current_row() {
                         Some(current_row) => {
-                            self.cursor_x = if 0 < current_row.len() {
-                                current_row.len() - 1
+                            self.cursor_x = if 0 < current_row.row.len() {
+                                current_row.row.len() - 1
                             } else {
                                 0
                             };
@@ -165,7 +165,7 @@ impl Editor {
             // right Right Arrow is \x1b[C
             event::Key::Char('d') | event::Key::Right => {
                 if let Some(current_row) = self.current_row() {
-                    let len = current_row.len();
+                    let len = current_row.row.len();
                     if 0 < len && self.cursor_x < len - 1 {
                         self.cursor_x += 1;
                     } else {
@@ -210,8 +210,8 @@ impl Editor {
         // if cursor_x > row_len, cursor_x = row_len.
         match self.current_row() {
             Some(row) => {
-                if self.cursor_x > row.len() {
-                    self.cursor_x = row.len();
+                if self.cursor_x > row.row.len() {
+                    self.cursor_x = row.row.len();
                 }
             }
             None => {}
@@ -316,15 +316,16 @@ impl Editor {
             let filerow = i + self.row_offset;
             if filerow < self.num_rows {
                 if let Some(content) = &self.content {
-                    let range = if content.rows[filerow].len() < self.col_offset {
+                    let range = if content.rows[filerow].render.len() < self.col_offset {
                         // no content in display range
                         0..0
                     } else {
                         let end = self.col_offset
-                            + (content.rows[filerow].len() - self.col_offset).min(cols);
+                            + (content.rows[filerow].render.len() - self.col_offset).min(cols);
                         self.col_offset..end
                     };
-                    print!("{}", &content.rows[filerow].sub_row(range));
+
+                    print!("{}", &content.rows[filerow].render[range]);
                 }
             } else {
                 if i == rows / 3 && self.num_rows == 0 {

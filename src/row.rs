@@ -1,31 +1,19 @@
-use std::ops::Range;
+use crate::TAB_STOP;
 
 pub struct Row {
-    row: String,
-    #[allow(dead_code)]
-    render_size: usize,
-    #[allow(dead_code)]
-    render: String,
+    pub row: String,
+    pub render: String,
 }
 
 impl Row {
     pub fn new<T>(row: T) -> Self
     where
-        T: Into<String>,
+        T: Into<String> + Clone,
     {
-        Self {
-            row: row.into(),
-            render_size: 0,
-            render: "".into(),
-        }
-    }
+        let row = row.clone().into();
+        let render: String = row.clone().replace('\t', &" ".repeat(TAB_STOP.into()));
 
-    pub fn len(&self) -> usize {
-        self.row.len()
-    }
-
-    pub fn sub_row(&self, range: Range<usize>) -> &str {
-        &self.row[range]
+        Self { row, render }
     }
 }
 
@@ -39,11 +27,11 @@ impl Content {
     }
 
     pub fn from_text(text: &String) -> Self {
-        let rows = text.lines().map(|l| {
-            Row::new(l)
-        });
+        let rows = text.lines().map(|l| Row::new(l));
 
-        Self { rows: rows.collect() }
+        Self {
+            rows: rows.collect(),
+        }
     }
 }
 
