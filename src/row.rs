@@ -10,8 +10,23 @@ impl Row {
     where
         T: Into<String> + Clone,
     {
-        let row = row.clone().into();
-        let render: String = row.clone().replace('\t', &" ".repeat(TAB_STOP.into()));
+        let row: String = row.clone().into();
+
+        let mut render = String::new();
+        let mut index = 0;
+        for c in row.chars() {
+            if c == '\t' {
+                render.push(' ');
+                index += 1;
+                while index % TAB_STOP != 0 {
+                    render.push(' ');
+                    index += 1;
+                }
+            } else {
+                render.push(c);
+                index += 1;
+            }
+        }
 
         Self { row, render }
     }
@@ -40,5 +55,11 @@ impl Default for Content {
         Content {
             rows: Vec::<Row>::new(),
         }
+    }
+}
+
+impl Content {
+    pub fn row_from_index(&self, n: usize) -> Option<&Row> {
+        self.rows.get(n)
     }
 }

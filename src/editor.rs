@@ -7,7 +7,7 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::raw::RawTerminal;
 
-use crate::row::*;
+use crate::{row::*, TAB_STOP};
 
 use crate::VERSION;
 
@@ -27,6 +27,7 @@ pub struct Editor {
     out: RawTerminal<Stdout>,
     cursor_x: usize,
     cursor_y: usize,
+    render_x: usize,
     content: Option<Content>,
     num_rows: usize,
     row_offset: usize,
@@ -59,6 +60,7 @@ impl Editor {
             out,
             cursor_x: 0,
             cursor_y: 0,
+            render_x: 0,
             content: None,
             num_rows: 0,
             row_offset: 0,
@@ -300,7 +302,7 @@ impl Editor {
         print!(
             "\x1b[{};{}H",
             (self.cursor_y - self.row_offset) + 1,
-            (self.cursor_x - self.col_offset) + 1
+            (self.render_x - self.col_offset) + 1
         );
 
         // reset mode (change to screen mode)
@@ -352,6 +354,8 @@ impl Editor {
     }
 
     fn editor_scroll(&mut self) {
+        self.cursor_x_to_render_x();
+
         // vartical scroll
         if self.cursor_y < self.row_offset {
             self.row_offset = self.cursor_y;
@@ -365,6 +369,12 @@ impl Editor {
         } else if self.col_offset + self.config.cols <= self.cursor_x {
             self.col_offset += 1;
         }
+
+        if self.render_x < self.col_offset {
+            self.col_offset = self.render_x;
+        } else if self.col_offset + self.config.cols <= self.render_x {
+            self.col_offset += 1;
+        }
     }
 
     fn current_row(&self) -> Option<&Row> {
@@ -372,5 +382,17 @@ impl Editor {
         content
             .as_ref()
             .and_then(|content| content.rows.get(self.cursor_y))
+    }
+
+    fn cursor_x_to_render_x(&mut self) {
+        let mut render_x = 0;
+        for c in self.current_row().unwrap().row.chars().take(self.cursor_x) {
+            if c == '\t' {
+                render_x += TAB_STOP - (render_x % TAB_STOP);
+            } else {
+                render_x += 1;
+            }
+        }
+        self.render_x = render_x.into();
     }
 }
