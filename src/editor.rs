@@ -178,16 +178,15 @@ impl Editor {
             }
             // pageup is \x1b[5~
             event::Key::PageUp => {
-                if self.cursor_y <= self.config.rows {
-                    self.cursor_y = 0;
-                } else {
-                    self.cursor_y -= self.config.rows;
-                }
+                self.cursor_y = self.row_offset;
             }
             // pagedown is \x1b[6~
             event::Key::PageDown => {
                 if self.cursor_y < self.config.rows {
-                    self.cursor_y = self.config.rows - 1;
+                    self.cursor_y = self.row_offset + self.config.rows - 1;
+                    if self.num_rows < self.cursor_y {
+                        self.cursor_y = self.num_rows;
+                    }
                 }
             }
             // home depends on OS.
@@ -198,7 +197,9 @@ impl Editor {
             // end depends on OS.
             // colud be \x1b[4~, \x1b[8~, \x1b[F, \x1b[0F
             event::Key::End => {
-                self.cursor_x = self.config.cols - 1;
+                if let Some(current_row) = self.current_row() {
+                    self.cursor_x = current_row.row.len()
+                }
             }
             // del is \x1b[3~
             // do nothing as of now
@@ -353,6 +354,7 @@ impl Editor {
         self.out.flush().unwrap();
     }
 
+    // TODO: buggy, fix it
     fn editor_scroll(&mut self) {
         self.cursor_x_to_render_x();
 
