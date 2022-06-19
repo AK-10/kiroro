@@ -53,7 +53,8 @@ impl Editor {
         // raw_terminal_attr: https://github.com/redox-os/termion/blob/8054e082b01c3f45f89f0db96bc374f1e378deb1/src/sys/unix/attr.rs#L17-L19
         let mut out = stdout().into_raw_mode().unwrap();
         let (cols, rows) = Self::get_window_size(&mut out);
-        let config = EditorConfig::new(cols.into(), rows.into());
+        // row - 1 is for status bar
+        let config = EditorConfig::new(cols.into(), (rows - 1).into());
 
         Self {
             config,
@@ -294,6 +295,7 @@ impl Editor {
         print!("\x1b[H");
 
         self.draw_rows();
+        self.draw_status_bar();
 
         // set cursor position current state of cursor
         // \x1b[{line};{column}
@@ -347,9 +349,7 @@ impl Editor {
             // \1b[K is erase in line
             // erase a line on current cursor
             print!("\x1b[K");
-            if i < rows - 1 {
-                print!("\r\n");
-            }
+            print!("\r\n");
         });
         self.out.flush().unwrap();
     }
@@ -379,6 +379,17 @@ impl Editor {
         }
     }
 
+    fn draw_status_bar(&mut self) {
+        // ]x1b[7m is reverse background and character color
+        print!("\x1b[7m");
+        let bar = " ".repeat(self.config.cols);
+        print!("{}", bar);
+        // reset character attributes; change normal mode
+        print!("\x1b[m");
+
+        self.out.flush().unwrap();
+    }
+
     fn current_row(&self) -> Option<&Row> {
         let content = &self.content;
         content
@@ -401,4 +412,5 @@ impl Editor {
 
         self.render_x = render_x.into();
     }
+
 }
