@@ -389,10 +389,10 @@ impl Editor {
             Some(filename) => filename,
             None => &noname,
         };
+        let cursor_status = format!("{}/{}", self.cursor_y + 1, self.content.as_ref().map(|c| c.rows.len()).unwrap_or(0));
+        let spacer = " ".repeat(self.config.cols - filename.len() - cursor_status.len());
 
-        print!("{}", filename);
-        let bar = " ".repeat(self.config.cols - filename.len());
-        print!("{}", bar);
+        print!("{}{}{}", filename, spacer, cursor_status);
         // reset character attributes; change normal mode
         print!("\x1b[m");
 
