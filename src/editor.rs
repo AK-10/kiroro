@@ -386,13 +386,17 @@ impl Editor {
 
     fn cursor_x_to_render_x(&mut self) {
         let mut render_x = 0;
-        for c in self.current_row().unwrap().row.chars().take(self.cursor_x) {
-            if c == '\t' {
-                render_x += TAB_STOP - (render_x % TAB_STOP);
-            } else {
-                render_x += 1;
+
+        if let Some(row) = self.current_row() {
+            for c in row.row.chars().take(self.cursor_x) {
+                if c == '\t' {
+                    render_x += TAB_STOP - (render_x % TAB_STOP);
+                } else {
+                    render_x += 1;
+                }
             }
         }
+
         self.render_x = render_x.into();
     }
 }
