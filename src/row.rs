@@ -33,18 +33,20 @@ impl Row {
 }
 
 pub struct Content {
+    pub filename: Option<String>,
     pub rows: Vec<Row>,
 }
 
 impl Content {
-    pub fn new(rows: Vec<Row>) -> Self {
-        Self { rows }
+    pub fn new(filename: String, rows: Vec<Row>) -> Self {
+        Self { filename: Some(filename), rows }
     }
 
-    pub fn from_text(text: &String) -> Self {
+    pub fn from_text(filename: String, text: &String) -> Self {
         let rows = text.lines().map(|l| Row::new(l));
 
         Self {
+            filename: Some(filename),
             rows: rows.collect(),
         }
     }
@@ -53,6 +55,7 @@ impl Content {
 impl Default for Content {
     fn default() -> Self {
         Content {
+            filename: None,
             rows: Vec::<Row>::new(),
         }
     }

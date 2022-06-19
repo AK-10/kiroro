@@ -79,7 +79,7 @@ impl Editor {
         key & 0b001_1111
     }
 
-    pub fn run(&mut self, path: Option<&String>) {
+    pub fn run(&mut self, path: Option<String>) {
         match path {
             Some(path) => self.open(path),
             _ => {}
@@ -121,14 +121,14 @@ impl Editor {
         }
     }
 
-    fn open(&mut self, path: &String) {
-        let mut f = File::open(path).unwrap();
+    fn open(&mut self, path: String) {
+        let mut f = File::open(&path).unwrap();
         // read_line returns string when \r or \n appear
         // read only one row
         let mut content_string = String::with_capacity(4096);
 
         let _ = f.read_to_string(&mut content_string);
-        let content = Content::from_text(&content_string);
+        let content = Content::from_text(path, &content_string);
 
         self.num_rows = content.rows.len();
         self.content = Some(content);
@@ -382,7 +382,16 @@ impl Editor {
     fn draw_status_bar(&mut self) {
         // ]x1b[7m is reverse background and character color
         print!("\x1b[7m");
-        let bar = " ".repeat(self.config.cols);
+        // display filename
+        let noname = "[No Name]".to_string();
+        let filename = self.content.as_ref().and_then(|c| c.filename.as_ref());
+        let filename = match filename {
+            Some(filename) => filename,
+            None => &noname,
+        };
+
+        print!("{}", filename);
+        let bar = " ".repeat(self.config.cols - filename.len());
         print!("{}", bar);
         // reset character attributes; change normal mode
         print!("\x1b[m");
@@ -412,5 +421,4 @@ impl Editor {
 
         self.render_x = render_x.into();
     }
-
 }

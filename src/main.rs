@@ -9,7 +9,7 @@ fn main() {
     // test_string(path.unwrap());
 
     let mut editor = Editor::new();
-    editor.run(path.as_ref());
+    editor.run(path);
 }
 
 #[allow(dead_code)]
