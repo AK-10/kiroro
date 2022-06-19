@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::{stdin, stdout, Read, Stdout, Write};
+use std::time;
 
 use termion::cursor::*;
 use termion::event;
@@ -32,6 +33,8 @@ pub struct Editor {
     num_rows: usize,
     row_offset: usize,
     col_offset: usize,
+    status_message: String,
+    status_message_time: time::Instant,
 }
 
 impl Editor {
@@ -53,8 +56,8 @@ impl Editor {
         // raw_terminal_attr: https://github.com/redox-os/termion/blob/8054e082b01c3f45f89f0db96bc374f1e378deb1/src/sys/unix/attr.rs#L17-L19
         let mut out = stdout().into_raw_mode().unwrap();
         let (cols, rows) = Self::get_window_size(&mut out);
-        // row - 1 is for status bar
-        let config = EditorConfig::new(cols.into(), (rows - 1).into());
+        // row - 1 is for status bar, status messages
+        let config = EditorConfig::new(cols.into(), (rows - 2).into());
 
         Self {
             config,
@@ -66,6 +69,8 @@ impl Editor {
             num_rows: 0,
             row_offset: 0,
             col_offset: 0,
+            status_message: String::new(),
+            status_message_time: time::Instant::now(),
         }
     }
 
@@ -80,6 +85,7 @@ impl Editor {
     }
 
     pub fn run(&mut self, path: Option<String>) {
+        self.set_status_message("HELP: Ctrl-Q = quit");
         match path {
             Some(path) => self.open(path),
             _ => {}
@@ -296,6 +302,7 @@ impl Editor {
 
         self.draw_rows();
         self.draw_status_bar();
+        self.draw_status_message_bar();
 
         // set cursor position current state of cursor
         // \x1b[{line};{column}
@@ -389,14 +396,40 @@ impl Editor {
             Some(filename) => filename,
             None => &noname,
         };
-        let cursor_status = format!("{}/{}", self.cursor_y + 1, self.content.as_ref().map(|c| c.rows.len()).unwrap_or(0));
+        let cursor_status = format!(
+            "{}/{}",
+            self.cursor_y + 1,
+            self.content.as_ref().map(|c| c.rows.len()).unwrap_or(0)
+        );
         let spacer = " ".repeat(self.config.cols - filename.len() - cursor_status.len());
 
         print!("{}{}{}", filename, spacer, cursor_status);
         // reset character attributes; change normal mode
         print!("\x1b[m");
+        print!("\r\n");
 
         self.out.flush().unwrap();
+    }
+
+    fn draw_status_message_bar(&mut self) {
+        // clear message bar
+        print!("\x1b[K");
+
+        let len = self.status_message.len().min(self.config.cols);
+        let msg = &self.status_message[..len];
+        if (time::Instant::now() - self.status_message_time).as_secs() < 5 {
+            print!("{}", msg);
+        }
+
+        self.out.flush().unwrap();
+    }
+
+    fn set_status_message<T>(&mut self, message: T)
+    where
+        T: Into<String>,
+    {
+        self.status_message = message.into();
+        self.status_message_time = time::Instant::now();
     }
 
     fn current_row(&self) -> Option<&Row> {
