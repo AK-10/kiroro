@@ -1,33 +1,14 @@
 use crate::TAB_STOP;
-use std::{error, fmt};
+use std::error::Error;
 
+#[derive(Debug)]
 pub struct Row {
     pub row: String,
     pub render: String,
 }
 
-#[derive(Debug)]
-enum Error {
-    Read(String),
-    Write(String)
-}
+impl Error for Row {
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "row: {}", self)
-    }
-}
-
-impl error::Error for Error {}
-
-impl Error {
-    #[allow(dead_code)]
-    fn new_read(msg: String) -> Self {
-        Self::Read(msg)
-    }
-    fn new_write(msg: String) -> Self {
-        Self::Write(msg)
-    }
 }
 
 impl Row {
@@ -56,13 +37,12 @@ impl Row {
         Self { row, render }
     }
 
-    pub fn insert(&mut self, n: usize, c: char) -> Result<(), Box<dyn error::Error>> {
+    pub fn insert(&mut self, n: usize, c: char) -> Result<(), Box<dyn Error>> {
         if n < self.row.len() {
             self.row.insert(n, c);
             Ok(())
         } else {
-            let msg = format!("failed insert index: {}, char: {}", n, c);
-            Err(Box::new(Error::new_write(msg)))
+            Box<Error>
         }
     }
 }
@@ -74,10 +54,7 @@ pub struct Content {
 
 impl Content {
     pub fn new(filename: String, rows: Vec<Row>) -> Self {
-        Self {
-            filename: Some(filename),
-            rows,
-        }
+        Self { filename: Some(filename), rows }
     }
 
     pub fn from_text(filename: String, text: &String) -> Self {
