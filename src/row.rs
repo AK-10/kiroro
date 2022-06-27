@@ -1,15 +1,10 @@
 use crate::TAB_STOP;
 use std::{error, fmt};
 
-pub struct Row {
-    pub row: String,
-    pub render: String,
-}
-
 #[derive(Debug)]
 enum Error {
     Read(String),
-    Write(String)
+    Write(String),
 }
 
 impl fmt::Display for Error {
@@ -30,16 +25,41 @@ impl Error {
     }
 }
 
+pub struct Row {
+    pub row: String,
+    pub render: String,
+}
+
 impl Row {
     pub fn new<T>(row: T) -> Self
     where
         T: Into<String> + Clone,
     {
-        let row: String = row.clone().into();
+        let row = row.into();
+        let render = String::with_capacity(row.len());
 
+        let mut row = Self { row, render };
+        row.update_render();
+
+        row
+    }
+
+    pub fn insert(&mut self, n: usize, c: char) -> Result<(), Box<dyn error::Error>> {
+        if n <= self.row.len() {
+            // O(n) operation
+            self.row.insert(n, c);
+            self.update_render();
+            Ok(())
+        } else {
+            let msg = format!("failed insert index: {}, char: {}", n, c);
+            Err(Box::new(Error::new_write(msg)))
+        }
+    }
+
+    fn update_render(&mut self) {
         let mut render = String::new();
         let mut index = 0;
-        for c in row.chars() {
+        (&self.row).chars().for_each(|c| {
             if c == '\t' {
                 render.push(' ');
                 index += 1;
@@ -51,19 +71,9 @@ impl Row {
                 render.push(c);
                 index += 1;
             }
-        }
+        });
 
-        Self { row, render }
-    }
-
-    pub fn insert(&mut self, n: usize, c: char) -> Result<(), Box<dyn error::Error>> {
-        if n < self.row.len() {
-            self.row.insert(n, c);
-            Ok(())
-        } else {
-            let msg = format!("failed insert index: {}, char: {}", n, c);
-            Err(Box::new(Error::new_write(msg)))
-        }
+        self.render = render;
     }
 }
 

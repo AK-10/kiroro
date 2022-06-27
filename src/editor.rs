@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::{stdin, stdout, Read, Stdout, Write};
-use std::time;
+use std::{error, fmt, time};
 
 use termion::cursor::*;
 use termion::event;
@@ -101,20 +101,19 @@ impl Editor {
                             self.reset_screen_on_end();
                             break;
                         }
-                        k @ (event::Key::Char('w')
-                        | event::Key::Up
-                        | event::Key::Char('a')
+                        k @ (event::Key::Up
                         | event::Key::Left
-                        | event::Key::Char('s')
                         | event::Key::Down
-                        | event::Key::Char('d')
                         | event::Key::Right
                         | event::Key::PageUp
                         | event::Key::PageDown
                         | event::Key::Home
                         | event::Key::End
                         | event::Key::Delete) => self.update_cursor_state(&k),
-                        _ => println!("{:?}\r", k),
+                        event::Key::Char(c) => {
+                            let _ = self.insert_char(c);
+                        }
+                        _ => {} // nop
                     }
 
                     self.refresh_screen();
@@ -433,10 +432,15 @@ impl Editor {
     }
 
     fn current_row(&self) -> Option<&Row> {
-        let content = &self.content;
-        content
+        self.content
             .as_ref()
             .and_then(|content| content.rows.get(self.cursor_y))
+    }
+
+    fn current_row_mut(&mut self) -> Option<&mut Row> {
+        self.content
+            .as_mut()
+            .and_then(|content| content.rows.get_mut(self.cursor_y))
     }
 
     fn cursor_x_to_render_x(&mut self) {
@@ -453,5 +457,34 @@ impl Editor {
         }
 
         self.render_x = render_x.into();
+    }
+
+    fn insert_char(&mut self, c: char) -> Result<(), Box<dyn error::Error>> {
+        let n = self.cursor_x;
+        if let Some(current_row) = self.current_row_mut() {
+            current_row.insert(n, c)?;
+            self.cursor_x += 1;
+
+            Ok(())
+        } else {
+            let msg = format!("current_row is none");
+            Err(Box::new(Error::new(msg)))
+        }
+    }
+}
+
+#[derive(Debug)]
+struct Error(String);
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl error::Error for Error {}
+
+impl Error {
+    pub fn new(msg: String) -> Self {
+        Self(msg)
     }
 }
