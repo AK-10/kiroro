@@ -98,6 +98,15 @@ impl Content {
             rows: rows.collect(),
         }
     }
+
+    // concat all rows with \n
+    pub fn rows_to_string(&self) -> String {
+        self.rows
+            .iter()
+            .map(|row| row.row.clone())
+            .collect::<Vec<String>>()
+            .join(&"\n")
+    }
 }
 
 impl Default for Content {
