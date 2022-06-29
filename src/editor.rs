@@ -91,38 +91,48 @@ impl Editor {
             _ => {}
         };
 
-        self.refresh_screen();
-        for k in stdin().keys() {
-            match k {
-                Ok(k) => {
-                    match k {
-                        // if k == ctrl_key(b'q')
-                        event::Key::Ctrl('q') => {
-                            self.reset_screen_on_end();
-                            break;
-                        }
-                        k @ (event::Key::Up
-                        | event::Key::Left
-                        | event::Key::Down
-                        | event::Key::Right
-                        | event::Key::PageUp
-                        | event::Key::PageDown
-                        | event::Key::Home
-                        | event::Key::End
-                        | event::Key::Delete) => self.update_cursor_state(&k),
-                        event::Key::Char(c) => {
-                            let _ = self.insert_char(c);
-                        }
-                        _ => {} // nop
-                    }
-
-                    self.refresh_screen();
-                }
-                Err(e) => {
+        loop {
+            self.refresh_screen();
+            match self.read_key() {
+                // if k == ctrl_key(b'q')
+                event::Key::Ctrl('q') => {
                     self.reset_screen_on_end();
-                    panic!("{}", e);
+                    break;
                 }
+                k @ (event::Key::Up
+                | event::Key::Left
+                | event::Key::Down
+                | event::Key::Right
+                | event::Key::PageUp
+                | event::Key::PageDown
+                | event::Key::Home
+                | event::Key::End) => self.update_cursor_state(&k),
+                event::Key::Backspace | event::Key::Ctrl('h') | event::Key::Delete => {
+                    // TODO: impl delete key
+                    // self.delete_current_char()
+                }
+                // Enter
+                event::Key::Char('\r') => {
+                    // TODO
+                }
+                event::Key::Ctrl('l') | event::Key::Char('\x1b') => {
+                    // TODO
+                }
+                event::Key::Char(c) => {
+                    let _ = self.insert_char(c);
+                }
+                _ => {} // nop
             }
+        }
+    }
+
+    // TODO: fix error handling
+    fn read_key(&self) -> event::Key {
+        // waiting input
+        if let Some(k) = stdin().keys().next() {
+            return k.unwrap();
+        } else {
+            panic!("failed getting key input")
         }
     }
 
@@ -484,7 +494,10 @@ impl fmt::Display for Error {
 impl error::Error for Error {}
 
 impl Error {
-    pub fn new(msg: String) -> Self {
-        Self(msg)
+    pub fn new<T>(msg: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self(msg.into())
     }
 }
