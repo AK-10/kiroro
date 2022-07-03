@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::{stdin, stdout, Read, Stdout, Write};
 use std::{error, fmt, time};
 
@@ -85,7 +85,7 @@ impl Editor {
     }
 
     pub fn run(&mut self, path: Option<String>) {
-        self.set_status_message("HELP: Ctrl-Q = quit");
+        self.set_status_message("HELP: Ctrl-S = save | Ctrl-Q = quit");
         match path {
             Some(path) => self.open(path),
             _ => {}
@@ -98,6 +98,9 @@ impl Editor {
                 event::Key::Ctrl('q') => {
                     self.reset_screen_on_end();
                     break;
+                }
+                event::Key::Ctrl('s') => {
+                    let _ = self.save();
                 }
                 k @ (event::Key::Up
                 | event::Key::Left
@@ -121,10 +124,10 @@ impl Editor {
                 event::Key::Char(c) => {
                     let _ = self.insert_char(c);
                 }
-                event::Key::Ctrl('s') => {
-                    let _ = self.save();
-                }
-                _ => {} // nop
+                x => {
+                    let msg = format!("key: {:?}", x);
+                    self.set_status_message(msg);
+                } // nop
             }
         }
     }
@@ -485,14 +488,22 @@ impl Editor {
         }
     }
 
-    fn save(&self) -> Result<(), Box<dyn error::Error>> {
-        if let None = self.content.as_ref().and_then(|c| c.filename.as_ref()) {
+    fn save(&mut self) -> Result<(), Box<dyn error::Error>> {
+        if let Some(content) = &self.content {
+            let rows = content.rows_to_string();
+            if let Some(name) = &content.filename {
+                let mut f = OpenOptions::new().write(true).open(name)?;
+                f.set_len(rows.len() as u64)?;
+                f.write(rows.as_bytes())?;
+                let msg = format!("saved into {}", name);
+                self.set_status_message(msg);
+            }
+
+            return Ok(());
+        } else {
             // TODO: create file, and write rows
             return Ok(());
         }
-
-        return Ok(())
-
     }
 }
 
