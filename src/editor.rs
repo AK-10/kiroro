@@ -8,7 +8,7 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::raw::RawTerminal;
 
-use crate::{row::*, TAB_STOP};
+use crate::{row::*, QUIT_TIMES, TAB_STOP};
 
 use crate::VERSION;
 
@@ -35,7 +35,7 @@ pub struct Editor {
     col_offset: usize,
     status_message: String,
     status_message_time: time::Instant,
-    dirty: bool
+    dirty: bool,
 }
 
 impl Editor {
@@ -72,7 +72,7 @@ impl Editor {
             col_offset: 0,
             status_message: String::new(),
             status_message_time: time::Instant::now(),
-            dirty: false
+            dirty: false,
         }
     }
 
@@ -93,11 +93,21 @@ impl Editor {
             _ => {}
         };
 
+        let mut quit_times = QUIT_TIMES;
+
         loop {
             self.refresh_screen();
             match self.read_key() {
                 // if k == ctrl_key(b'q')
                 event::Key::Ctrl('q') => {
+                    quit_times -= 1;
+
+                    if self.dirty && 0 < quit_times {
+                        let msg = format!("warning. file has unsaved changes. press Ctrl-Q {} more times to quit.", quit_times);
+                        self.set_status_message(msg);
+
+                        continue;
+                    }
                     self.reset_screen_on_end();
                     break;
                 }
@@ -419,13 +429,10 @@ impl Editor {
             self.cursor_y + 1,
             self.content.as_ref().map(|c| c.rows.len()).unwrap_or(0)
         );
-        let edit_status = if self.dirty {
-            "[modified]"
-        } else {
-            ""
-        };
+        let edit_status = if self.dirty { "[modified]" } else { "" };
 
-        let spacer = " ".repeat(self.config.cols - filename.len() - edit_status.len() - cursor_status.len());
+        let spacer =
+            " ".repeat(self.config.cols - filename.len() - edit_status.len() - cursor_status.len());
 
         print!("{}{}{}{}", filename, edit_status, spacer, cursor_status);
         // reset character attributes; change normal mode
