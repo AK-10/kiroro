@@ -35,6 +35,7 @@ pub struct Editor {
     col_offset: usize,
     status_message: String,
     status_message_time: time::Instant,
+    dirty: bool
 }
 
 impl Editor {
@@ -71,6 +72,7 @@ impl Editor {
             col_offset: 0,
             status_message: String::new(),
             status_message_time: time::Instant::now(),
+            dirty: false
         }
     }
 
@@ -153,6 +155,7 @@ impl Editor {
 
         self.num_rows = content.rows.len();
         self.content = Some(content);
+        self.dirty = false;
     }
 
     fn update_cursor_state(&mut self, key: &event::Key) {
@@ -416,9 +419,15 @@ impl Editor {
             self.cursor_y + 1,
             self.content.as_ref().map(|c| c.rows.len()).unwrap_or(0)
         );
-        let spacer = " ".repeat(self.config.cols - filename.len() - cursor_status.len());
+        let edit_status = if self.dirty {
+            "[modified]"
+        } else {
+            ""
+        };
 
-        print!("{}{}{}", filename, spacer, cursor_status);
+        let spacer = " ".repeat(self.config.cols - filename.len() - edit_status.len() - cursor_status.len());
+
+        print!("{}{}{}{}", filename, edit_status, spacer, cursor_status);
         // reset character attributes; change normal mode
         print!("\x1b[m");
         print!("\r\n");
@@ -480,6 +489,7 @@ impl Editor {
         if let Some(current_row) = self.current_row_mut() {
             current_row.insert(n, c)?;
             self.cursor_x += 1;
+            self.dirty = true;
 
             Ok(())
         } else {
@@ -497,6 +507,7 @@ impl Editor {
                 f.write(rows.as_bytes())?;
                 let msg = format!("saved into {}", name);
                 self.set_status_message(msg);
+                self.dirty = false;
             }
 
             return Ok(());
