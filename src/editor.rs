@@ -121,6 +121,9 @@ impl Editor {
                 event::Key::Char(c) => {
                     let _ = self.insert_char(c);
                 }
+                event::Key::Ctrl('s') => {
+                    let _ = self.save();
+                }
                 _ => {} // nop
             }
         }
@@ -480,6 +483,16 @@ impl Editor {
             let msg = format!("current_row is none");
             Err(Box::new(Error::new(msg)))
         }
+    }
+
+    fn save(&self) -> Result<(), Box<dyn error::Error>> {
+        if let None = self.content.as_ref().and_then(|c| c.filename.as_ref()) {
+            // TODO: create file, and write rows
+            return Ok(());
+        }
+
+        return Ok(())
+
     }
 }
 
