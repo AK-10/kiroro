@@ -8,7 +8,7 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::raw::RawTerminal;
 
-use crate::{row::*, content::*, QUIT_TIMES, TAB_STOP, VERSION};
+use crate::{content::*, row::*, QUIT_TIMES, TAB_STOP, VERSION};
 
 pub struct EditorConfig {
     pub cols: usize,
@@ -54,7 +54,6 @@ impl Error {
         Self(msg.into())
     }
 }
-
 
 impl Editor {
     pub fn new() -> Self {
@@ -493,12 +492,6 @@ impl Editor {
             .and_then(|content| content.rows.get(self.cursor_y))
     }
 
-    fn current_row_mut(&mut self) -> Option<&mut Row> {
-        self.content
-            .as_mut()
-            .and_then(|content| content.rows.get_mut(self.cursor_y))
-    }
-
     fn cursor_x_to_render_x(&mut self) {
         let mut render_x = 0;
 
@@ -516,8 +509,8 @@ impl Editor {
     }
 
     fn insert_char(&mut self, c: char) -> Result<(), Box<dyn error::Error>> {
-        if let Some(context) = self.content.as_mut() {
-            context.insert_char(self.cursor_y, self.cursor_x, c)?;
+        if let Some(content) = self.content.as_mut() {
+            content.insert_char(self.cursor_y, self.cursor_x, c)?;
             self.cursor_x += 1;
             self.dirty = true;
 
@@ -529,22 +522,18 @@ impl Editor {
     }
 
     fn backspace_char(&mut self) -> Result<(), Box<dyn error::Error>> {
-        let n = self.cursor_x;
-        // TODO: remove \n if cursor is on the head of row
-        if n <= 0 {
-            let msg = format!("unimplemented backspace on the head of row");
-            return Err(Box::new(Error::new(msg)));
-        }
+        if let Some(content) = self.content.as_mut() {
+            if let Some(col_idx) = self.cursor_x.checked_sub(1) {
+                content.delete_char(self.cursor_y, col_idx)?;
+                self.cursor_x -= 1;
+                self.dirty = true;
 
-        if let Some(current_row) = self.current_row_mut() {
-            current_row.delete(n - 1)?;
-            self.cursor_x -= 1;
-            self.dirty = true;
-
-            Ok(())
+                Ok(())
+            } else {
+                Err(Box::new(Error::new("unimplemented delete on head of row")))
+            }
         } else {
-            let msg = format!("current_row is none");
-            Err(Box::new(Error::new(msg)))
+            Err(Box::new(Error::new("current_row is none")))
         }
     }
 
@@ -567,5 +556,3 @@ impl Editor {
         }
     }
 }
-
-

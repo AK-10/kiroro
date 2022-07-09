@@ -55,7 +55,12 @@ impl Content {
             .join(&"\n")
     }
 
-    pub fn insert_char(&mut self, row_idx: usize, col_idx: usize, c: char) -> Result<(), Box<dyn error::Error>> {
+    pub fn insert_char(
+        &mut self,
+        row_idx: usize,
+        col_idx: usize,
+        c: char,
+    ) -> Result<(), Box<dyn error::Error>> {
         if let Some(row) = self.rows.get_mut(row_idx) {
             row.insert(col_idx, c)
         } else {
@@ -64,8 +69,17 @@ impl Content {
         }
     }
 
-    pub fn delete_char(&mut self, row: usize, col: usize) -> Result<(), Box<dyn error::Error>> {
-        Ok(())
+    pub fn delete_char(
+        &mut self,
+        row_idx: usize,
+        col_idx: usize,
+    ) -> Result<(), Box<dyn error::Error>> {
+        if let Some(row) = self.rows.get_mut(row_idx) {
+            row.delete(col_idx)
+        } else {
+            let msg = format!("row idx: {} | row not found.", row_idx);
+            Err(Box::new(Error::new(msg)))
+        }
     }
 }
 
