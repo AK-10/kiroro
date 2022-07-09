@@ -81,6 +81,10 @@ impl Content {
             Err(Box::new(Error::new(msg)))
         }
     }
+
+    pub fn is_phantom(&self) -> bool {
+        self.filename.is_none()
+    }
 }
 
 impl Default for Content {

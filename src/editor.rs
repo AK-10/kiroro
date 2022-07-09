@@ -27,7 +27,7 @@ pub struct Editor {
     cursor_x: usize,
     cursor_y: usize,
     render_x: usize,
-    content: Option<Content>,
+    content: Content,
     num_rows: usize,
     row_offset: usize,
     col_offset: usize,
@@ -83,7 +83,7 @@ impl Editor {
             cursor_x: 0,
             cursor_y: 0,
             render_x: 0,
-            content: None,
+            content: Content::default(),
             num_rows: 0,
             row_offset: 0,
             col_offset: 0,
@@ -132,7 +132,7 @@ impl Editor {
                     break;
                 }
                 event::Key::Ctrl('s') => {
-                    let _ = self.save();
+                    res = self.save();
                 }
                 k @ (event::Key::Up
                 | event::Key::Left
@@ -187,7 +187,7 @@ impl Editor {
         let content = Content::from_text(path, &content_string);
 
         self.num_rows = content.rows.len();
-        self.content = Some(content);
+        self.content = content;
         self.dirty = false;
     }
 
@@ -378,18 +378,16 @@ impl Editor {
         (0..rows).for_each(|i| {
             let filerow = i + self.row_offset;
             if filerow < self.num_rows {
-                if let Some(content) = &self.content {
-                    let range = if content.rows[filerow].render.len() < self.col_offset {
-                        // no content in display range
-                        0..0
-                    } else {
-                        let end = self.col_offset
-                            + (content.rows[filerow].render.len() - self.col_offset).min(cols);
-                        self.col_offset..end
-                    };
+                let range = if self.content.rows[filerow].render.len() < self.col_offset {
+                    // no content in display range
+                    0..0
+                } else {
+                    let end = self.col_offset
+                        + (self.content.rows[filerow].render.len() - self.col_offset).min(cols);
+                    self.col_offset..end
+                };
 
-                    print!("{}", &content.rows[filerow].render[range]);
-                }
+                print!("{}", &self.content.rows[filerow].render[range]);
             } else {
                 if i == rows / 3 && self.num_rows == 0 {
                     let msg = format!("kiroro editor -- version {}", VERSION);
@@ -442,7 +440,7 @@ impl Editor {
         print!("\x1b[7m");
         // display filename
         let noname = "[No Name]".to_string();
-        let filename = self.content.as_ref().and_then(|c| c.filename.as_ref());
+        let filename = self.content.filename.as_ref();
         let filename = match filename {
             Some(filename) => filename,
             None => &noname,
@@ -450,7 +448,7 @@ impl Editor {
         let cursor_status = format!(
             "{}/{}",
             self.cursor_y + 1,
-            self.content.as_ref().map(|c| c.rows.len()).unwrap_or(0)
+            self.content.rows.len()
         );
         let edit_status = if self.dirty { "[modified]" } else { "" };
 
@@ -487,9 +485,7 @@ impl Editor {
     }
 
     fn current_row(&self) -> Option<&Row> {
-        self.content
-            .as_ref()
-            .and_then(|content| content.rows.get(self.cursor_y))
+        self.content.rows.get(self.cursor_y)
     }
 
     fn cursor_x_to_render_x(&mut self) {
@@ -509,38 +505,29 @@ impl Editor {
     }
 
     fn insert_char(&mut self, c: char) -> Result<(), Box<dyn error::Error>> {
-        if let Some(content) = self.content.as_mut() {
-            content.insert_char(self.cursor_y, self.cursor_x, c)?;
-            self.cursor_x += 1;
+        self.content.insert_char(self.cursor_y, self.cursor_x, c)?;
+        self.cursor_x += 1;
+        self.dirty = true;
+
+        Ok(())
+    }
+
+    fn backspace_char(&mut self) -> Result<(), Box<dyn error::Error>> {
+        if let Some(col_idx) = self.cursor_x.checked_sub(1) {
+            self.content.delete_char(self.cursor_y, col_idx)?;
+            self.cursor_x -= 1;
             self.dirty = true;
 
             Ok(())
         } else {
-            let msg = format!("current_row is none");
-            Err(Box::new(Error::new(msg)))
-        }
-    }
-
-    fn backspace_char(&mut self) -> Result<(), Box<dyn error::Error>> {
-        if let Some(content) = self.content.as_mut() {
-            if let Some(col_idx) = self.cursor_x.checked_sub(1) {
-                content.delete_char(self.cursor_y, col_idx)?;
-                self.cursor_x -= 1;
-                self.dirty = true;
-
-                Ok(())
-            } else {
-                Err(Box::new(Error::new("unimplemented delete on head of row")))
-            }
-        } else {
-            Err(Box::new(Error::new("current_row is none")))
+            Err(Box::new(Error::new("unimplemented delete on head of row")))
         }
     }
 
     fn save(&mut self) -> Result<(), Box<dyn error::Error>> {
-        if let Some(content) = &self.content {
-            let rows = content.rows_to_string();
-            if let Some(name) = &content.filename {
+        if !self.content.is_phantom() {
+            let rows = self.content.rows_to_string();
+            if let Some(name) = &self.content.filename {
                 let mut f = OpenOptions::new().write(true).open(name)?;
                 f.set_len(rows.len() as u64)?;
                 f.write(rows.as_bytes())?;
@@ -551,8 +538,7 @@ impl Editor {
 
             return Ok(());
         } else {
-            // TODO: create file, and write rows
-            return Ok(());
+            Err(Box::new(Error::new("unimplemented write to new file")))
         }
     }
 }
