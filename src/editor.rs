@@ -8,9 +8,7 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::raw::RawTerminal;
 
-use crate::{row::*, QUIT_TIMES, TAB_STOP};
-
-use crate::VERSION;
+use crate::{row::*, content::*, QUIT_TIMES, TAB_STOP, VERSION};
 
 pub struct EditorConfig {
     pub cols: usize,
@@ -37,6 +35,26 @@ pub struct Editor {
     status_message_time: time::Instant,
     dirty: bool,
 }
+
+#[derive(Debug)]
+struct Error(String);
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl error::Error for Error {}
+
+impl Error {
+    pub fn new<T>(msg: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self(msg.into())
+    }
+}
+
 
 impl Editor {
     pub fn new() -> Self {
@@ -498,9 +516,8 @@ impl Editor {
     }
 
     fn insert_char(&mut self, c: char) -> Result<(), Box<dyn error::Error>> {
-        let n = self.cursor_x;
-        if let Some(current_row) = self.current_row_mut() {
-            current_row.insert(n, c)?;
+        if let Some(context) = self.content.as_mut() {
+            context.insert_char(self.cursor_y, self.cursor_x, c)?;
             self.cursor_x += 1;
             self.dirty = true;
 
@@ -551,21 +568,4 @@ impl Editor {
     }
 }
 
-#[derive(Debug)]
-struct Error(String);
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-impl error::Error for Error {}
-
-impl Error {
-    pub fn new<T>(msg: T) -> Self
-    where
-        T: Into<String>,
-    {
-        Self(msg.into())
-    }
-}
