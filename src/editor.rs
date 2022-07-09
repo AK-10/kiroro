@@ -96,6 +96,9 @@ impl Editor {
         let mut quit_times = QUIT_TIMES;
 
         loop {
+            // to render error message
+            let mut res: Result<(), Box<dyn error::Error>> = Ok(());
+
             self.refresh_screen();
             match self.read_key() {
                 // if k == ctrl_key(b'q')
@@ -123,8 +126,7 @@ impl Editor {
                 | event::Key::Home
                 | event::Key::End) => self.update_cursor_state(&k),
                 event::Key::Backspace | event::Key::Ctrl('h') | event::Key::Delete => {
-                    // TODO: impl delete key
-                    // self.delete_current_char()
+                    res = self.backspace_char();
                 }
                 // Enter
                 event::Key::Char('\r') => {
@@ -134,12 +136,16 @@ impl Editor {
                     // TODO
                 }
                 event::Key::Char(c) => {
-                    let _ = self.insert_char(c);
+                    res = self.insert_char(c);
                 }
                 x => {
                     let msg = format!("key: {:?}", x);
                     self.set_status_message(msg);
                 } // nop
+            }
+
+            if let Err(e) = res {
+                self.set_status_message(format!("{}", e));
             }
         }
     }
@@ -496,6 +502,26 @@ impl Editor {
         if let Some(current_row) = self.current_row_mut() {
             current_row.insert(n, c)?;
             self.cursor_x += 1;
+            self.dirty = true;
+
+            Ok(())
+        } else {
+            let msg = format!("current_row is none");
+            Err(Box::new(Error::new(msg)))
+        }
+    }
+
+    fn backspace_char(&mut self) -> Result<(), Box<dyn error::Error>> {
+        let n = self.cursor_x;
+        // TODO: remove \n if cursor is on the head of row
+        if n <= 0 {
+            let msg = format!("unimplemented backspace on the head of row");
+            return Err(Box::new(Error::new(msg)));
+        }
+
+        if let Some(current_row) = self.current_row_mut() {
+            current_row.delete(n - 1)?;
+            self.cursor_x -= 1;
             self.dirty = true;
 
             Ok(())

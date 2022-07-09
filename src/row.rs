@@ -56,6 +56,19 @@ impl Row {
         }
     }
 
+    pub fn delete(&mut self, n: usize) -> Result<(), Box<dyn error::Error>> {
+        if n <= self.row.len() {
+            self.row.remove(n);
+            self.update_render();
+            Ok(())
+        } else {
+            let c = self.row.chars().nth(n).unwrap_or('\0');
+            let msg = format!("failed insert index: {}, char: {}", n, c);
+            Err(Box::new(Error::new_write(msg)))
+        }
+
+    }
+
     fn update_render(&mut self) {
         let mut render = String::new();
         let mut index = 0;
