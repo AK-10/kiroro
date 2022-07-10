@@ -528,8 +528,11 @@ impl Editor {
                 return Ok(());
             }
 
-
-            let cursor_x = self.content.rows.get(self.cursor_y - 1).map_or(0, |r| r.row.len());
+            let cursor_x = self
+                .content
+                .rows
+                .get(self.cursor_y - 1)
+                .map_or(0, |r| r.row.len());
             self.content.concatenate_previous_row(self.cursor_y)?;
             self.dirty = true;
             self.cursor_y -= 1;

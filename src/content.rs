@@ -82,7 +82,10 @@ impl Content {
         }
     }
 
-    pub fn concatenate_previous_row(&mut self, row_idx: usize) -> Result<(), Box<dyn error::Error>> {
+    pub fn concatenate_previous_row(
+        &mut self,
+        row_idx: usize,
+    ) -> Result<(), Box<dyn error::Error>> {
         if row_idx == 0 {
             // case of first row, there is no previous string.
             // do nothing
