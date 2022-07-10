@@ -66,10 +66,9 @@ impl Row {
             let msg = format!("failed insert index: {}, char: {}", n, c);
             Err(Box::new(Error::new_write(msg)))
         }
-
     }
 
-    fn update_render(&mut self) {
+    pub fn update_render(&mut self) {
         let mut render = String::new();
         let mut index = 0;
         (&self.row).chars().for_each(|c| {

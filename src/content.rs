@@ -82,6 +82,24 @@ impl Content {
         }
     }
 
+    pub fn concatenate_previous_row(&mut self, row_idx: usize) -> Result<(), Box<dyn error::Error>> {
+        if row_idx == 0 {
+            // case of first row, there is no previous string.
+            // do nothing
+            Ok(())
+        } else if 0 < row_idx && row_idx <= self.rows.len() {
+            let row_string = self.rows.remove(row_idx);
+            if let Some(prev_row) = self.rows.get_mut(row_idx - 1) {
+                prev_row.row.push_str(&*row_string.row);
+                prev_row.update_render();
+            }
+            Ok(())
+        } else {
+            let msg = format!("row: {} | row index is out of range", row_idx);
+            Err(Box::new(Error::new(msg)))
+        }
+    }
+
     pub fn is_phantom(&self) -> bool {
         self.filename.is_none()
     }

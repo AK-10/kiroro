@@ -142,12 +142,17 @@ impl Editor {
                 | event::Key::PageDown
                 | event::Key::Home
                 | event::Key::End) => self.update_cursor_state(&k),
-                event::Key::Backspace | event::Key::Ctrl('h') | event::Key::Delete => {
+                event::Key::Backspace | event::Key::Ctrl('h') => {
+                    res = self.backspace_char();
+                }
+                event::Key::Delete => {
+                    self.update_cursor_state(&event::Key::Right);
                     res = self.backspace_char();
                 }
                 // Enter
-                event::Key::Char('\r') => {
+                event::Key::Char('\n') | event::Key::Char('\r') => {
                     // TODO
+                    self.set_status_message("pushed Enter");
                 }
                 event::Key::Ctrl('l') | event::Key::Char('\x1b') => {
                     // TODO
@@ -156,9 +161,10 @@ impl Editor {
                     res = self.insert_char(c);
                 }
                 x => {
+                    // nop
                     let msg = format!("key: {:?}", x);
                     self.set_status_message(msg);
-                } // nop
+                }
             }
 
             if let Err(e) = res {
@@ -445,11 +451,7 @@ impl Editor {
             Some(filename) => filename,
             None => &noname,
         };
-        let cursor_status = format!(
-            "{}/{}",
-            self.cursor_y + 1,
-            self.content.rows.len()
-        );
+        let cursor_status = format!("{}/{}", self.cursor_y + 1, self.content.rows.len());
         let edit_status = if self.dirty { "[modified]" } else { "" };
 
         let spacer =
@@ -520,6 +522,18 @@ impl Editor {
 
             Ok(())
         } else {
+            // case of first line, there is no previous string.
+            // do notihng
+            if self.cursor_y == 0 {
+                return Ok(());
+            }
+
+
+            let cursor_x = self.content.rows.get(self.cursor_y - 1).map_or(0, |r| r.row.len());
+            self.content.concatenate_previous_row(self.cursor_y)?;
+            self.dirty = true;
+            self.cursor_y -= 1;
+            self.cursor_x = cursor_x;
             Err(Box::new(Error::new("unimplemented delete on head of row")))
         }
     }
