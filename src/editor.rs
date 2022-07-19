@@ -28,7 +28,6 @@ pub struct Editor {
     cursor_y: usize,
     render_x: usize,
     content: Content,
-    num_rows: usize,
     row_offset: usize,
     col_offset: usize,
     status_message: String,
@@ -84,7 +83,6 @@ impl Editor {
             cursor_y: 0,
             render_x: 0,
             content: Content::default(),
-            num_rows: 0,
             row_offset: 0,
             col_offset: 0,
             status_message: String::new(),
@@ -151,8 +149,7 @@ impl Editor {
                 }
                 // Enter
                 event::Key::Char('\n') | event::Key::Char('\r') => {
-                    // TODO
-                    self.set_status_message("pushed Enter");
+                    res = self.insert_new_line();
                 }
                 event::Key::Ctrl('l') | event::Key::Char('\x1b') => {
                     // TODO
@@ -192,7 +189,6 @@ impl Editor {
         let _ = f.read_to_string(&mut content_string);
         let content = Content::from_text(path, &content_string);
 
-        self.num_rows = content.rows.len();
         self.content = content;
         self.dirty = false;
     }
@@ -224,7 +220,7 @@ impl Editor {
             }
             // down Down Arrow is \x1b[B
             event::Key::Char('s') | event::Key::Down => {
-                if self.cursor_y < self.num_rows {
+                if self.cursor_y < self.num_rows() {
                     self.cursor_y += 1;
                 }
             }
@@ -248,8 +244,8 @@ impl Editor {
             event::Key::PageDown => {
                 if self.cursor_y < self.config.rows {
                     self.cursor_y = self.row_offset + self.config.rows - 1;
-                    if self.num_rows < self.cursor_y {
-                        self.cursor_y = self.num_rows;
+                    if self.num_rows() < self.cursor_y {
+                        self.cursor_y = self.num_rows();
                     }
                 }
             }
@@ -383,7 +379,7 @@ impl Editor {
         let cols = self.config.cols;
         (0..rows).for_each(|i| {
             let filerow = i + self.row_offset;
-            if filerow < self.num_rows {
+            if filerow < self.num_rows() {
                 let range = if self.content.rows[filerow].render.len() < self.col_offset {
                     // no content in display range
                     0..0
@@ -395,7 +391,7 @@ impl Editor {
 
                 print!("{}", &self.content.rows[filerow].render[range]);
             } else {
-                if i == rows / 3 && self.num_rows == 0 {
+                if i == rows / 3 && self.num_rows() == 0 {
                     let msg = format!("kiroro editor -- version {}", VERSION);
                     let msg_len = msg.len().min(cols as usize);
                     let padding_space_count = (cols as usize - msg_len) / 2;
@@ -541,6 +537,16 @@ impl Editor {
         }
     }
 
+    fn insert_new_line(&mut self) -> Result<(), Box<dyn error::Error>> {
+        self.content.insert_new_line(self.cursor_y, self.cursor_x)?;
+
+        self.cursor_y += 1;
+        self.cursor_x = 0;
+        self.dirty = true;
+
+        Ok(())
+    }
+
     fn save(&mut self) -> Result<(), Box<dyn error::Error>> {
         if !self.content.is_phantom() {
             let rows = self.content.rows_to_string();
@@ -557,5 +563,9 @@ impl Editor {
         } else {
             Err(Box::new(Error::new("unimplemented write to new file")))
         }
+    }
+
+    fn num_rows(&self) -> usize {
+        self.content.rows.len()
     }
 }

@@ -68,6 +68,16 @@ impl Row {
         }
     }
 
+    pub fn split(&self, pivot: usize) -> Result<(Row, Row), Box<dyn error::Error>> {
+        if pivot <= self.row.len() {
+            let (first, second) = self.row.split_at(pivot);
+            Ok((Row::new(first), Row::new(second)))
+        } else {
+            let msg = format!("failed split index out of range. index: {}", &pivot);
+            Err(Box::new(Error::new_write(msg)))
+        }
+    }
+
     pub fn update_render(&mut self) {
         let mut render = String::new();
         let mut index = 0;

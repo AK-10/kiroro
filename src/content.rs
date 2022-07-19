@@ -1,5 +1,5 @@
 use crate::row::Row;
-use std::{error, fmt};
+use std::{error, fmt, mem};
 
 pub struct Content {
     pub filename: Option<String>,
@@ -69,6 +69,15 @@ impl Content {
         }
     }
 
+    pub fn insert_new_line(&mut self, row_idx: usize, col_idx: usize) -> Result<(), Box<dyn error::Error>> {
+        if let Some(row) = self.rows.get_mut(row_idx) {
+            let (first, second) = row.split(col_idx)?;
+            let _ = mem::replace(row, first);
+            self.rows.insert(row_idx + 1, second)
+        }
+        Ok(())
+    }
+
     pub fn delete_char(
         &mut self,
         row_idx: usize,
@@ -90,7 +99,7 @@ impl Content {
             // case of first row, there is no previous string.
             // do nothing
             Ok(())
-        } else if 0 < row_idx && row_idx <= self.rows.len() {
+        } else if 0 < row_idx && row_idx < self.rows.len() {
             let row_string = self.rows.remove(row_idx);
             if let Some(prev_row) = self.rows.get_mut(row_idx - 1) {
                 prev_row.row.push_str(&*row_string.row);
