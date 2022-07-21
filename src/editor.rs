@@ -561,7 +561,7 @@ impl Editor {
 
         let rows = self.content.rows_to_string();
         if let Some(name) = &self.content.filename {
-            let mut f = OpenOptions::new().write(true).open(name)?;
+            let mut f = OpenOptions::new().write(true).create(true).open(name)?;
             f.set_len(rows.len() as u64)?;
             f.write(rows.as_bytes())?;
             let msg = format!("saved into {}", name);
@@ -582,17 +582,16 @@ impl Editor {
         loop {
             let msg = format!("{}{}", prompt, buf);
             self.set_status_message(msg);
+            self.refresh_screen();
 
             match self.read_key() {
-                event::Key::Char('\r') => {
+                event::Key::Char('\n') | event::Key::Char('\r') => {
                     if !buf.is_empty() {
                         return Some(buf);
                     }
                 }
                 // cancel the input prompt
-                event::Key::Char('\x1b') => {
-                    return None
-                }
+                event::Key::Esc => return None,
                 event::Key::Char(c) => {
                     buf.push(c);
                 }
