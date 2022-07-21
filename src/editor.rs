@@ -548,24 +548,56 @@ impl Editor {
     }
 
     fn save(&mut self) -> Result<(), Box<dyn error::Error>> {
-        if !self.content.is_phantom() {
-            let rows = self.content.rows_to_string();
-            if let Some(name) = &self.content.filename {
-                let mut f = OpenOptions::new().write(true).open(name)?;
-                f.set_len(rows.len() as u64)?;
-                f.write(rows.as_bytes())?;
-                let msg = format!("saved into {}", name);
-                self.set_status_message(msg);
-                self.dirty = false;
+        self.set_status_message("save mode");
+        if self.content.is_phantom() {
+            match self.prompt("save as: ") {
+                Some(input) => self.content.filename = Some(input),
+                None => {
+                    self.set_status_message("save aborted");
+                    return Ok(());
+                }
             }
+        };
 
-            return Ok(());
-        } else {
-            Err(Box::new(Error::new("unimplemented write to new file")))
+        let rows = self.content.rows_to_string();
+        if let Some(name) = &self.content.filename {
+            let mut f = OpenOptions::new().write(true).open(name)?;
+            f.set_len(rows.len() as u64)?;
+            f.write(rows.as_bytes())?;
+            let msg = format!("saved into {}", name);
+            self.set_status_message(msg);
+            self.dirty = false;
         }
+
+        return Ok(());
     }
 
     fn num_rows(&self) -> usize {
         self.content.rows.len()
+    }
+
+    fn prompt(&mut self, prompt: &str) -> Option<String> {
+        let mut buf = String::with_capacity(128);
+
+        loop {
+            let msg = format!("{}{}", prompt, buf);
+            self.set_status_message(msg);
+
+            match self.read_key() {
+                event::Key::Char('\r') => {
+                    if !buf.is_empty() {
+                        return Some(buf);
+                    }
+                }
+                // cancel the input prompt
+                event::Key::Char('\x1b') => {
+                    return None
+                }
+                event::Key::Char(c) => {
+                    buf.push(c);
+                }
+                _ => {}
+            }
+        }
     }
 }
