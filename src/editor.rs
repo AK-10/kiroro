@@ -590,13 +590,14 @@ impl Editor {
                         return Some(buf);
                     }
                 }
+                event::Key::Delete | event::Key::Backspace | event::Key::Ctrl('l') => {
+                    buf.pop();
+                }
                 // cancel the input prompt
                 event::Key::Esc => return None,
-                event::Key::Char(c) => {
-                    buf.push(c);
-                }
+                event::Key::Char(c) => buf.push(c),
                 _ => {}
-            }
+            };
         }
     }
 }
