@@ -209,7 +209,7 @@ impl Editor {
                     match self.current_row() {
                         Some(current_row) => {
                             self.cursor_x = if 0 < current_row.row.len() {
-                                current_row.row.len() - 1
+                                current_row.row.len()
                             } else {
                                 0
                             };
