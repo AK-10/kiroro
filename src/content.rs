@@ -62,19 +62,28 @@ impl Content {
         c: char,
     ) -> Result<(), Box<dyn error::Error>> {
         if let Some(row) = self.rows.get_mut(row_idx) {
-            row.insert(col_idx, c)
+            row.insert(col_idx, c)?
         } else {
-            let msg = format!("row idx: {} | row not found.", row_idx);
-            Err(Box::new(Error::new(msg)))
+            let row = Row::new(String::from(c));
+            self.rows.push(row);
         }
+
+        Ok(())
     }
 
-    pub fn insert_new_line(&mut self, row_idx: usize, col_idx: usize) -> Result<(), Box<dyn error::Error>> {
+    pub fn insert_new_line(
+        &mut self,
+        row_idx: usize,
+        col_idx: usize,
+    ) -> Result<(), Box<dyn error::Error>> {
         if let Some(row) = self.rows.get_mut(row_idx) {
             let (first, second) = row.split(col_idx)?;
             let _ = mem::replace(row, first);
-            self.rows.insert(row_idx + 1, second)
+            self.rows.insert(row_idx + 1, second);
+        } else {
+            self.rows.push(Row::new(""));
         }
+
         Ok(())
     }
 
