@@ -124,6 +124,17 @@ impl Content {
     pub fn is_phantom(&self) -> bool {
         self.filename.is_none()
     }
+
+    // return (row idx, col idx)
+    pub fn find(&self, query: &String) -> Option<(usize, usize)> {
+        for (row_idx, row) in self.rows.iter().enumerate() {
+            if let Some(col_idx) = row.render.find(query) {
+                return Some((row_idx, col_idx));
+            }
+        }
+
+        None
+    }
 }
 
 impl Default for Content {

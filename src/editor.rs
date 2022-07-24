@@ -102,7 +102,7 @@ impl Editor {
     }
 
     pub fn run(&mut self, path: Option<String>) {
-        self.set_status_message("HELP: Ctrl-S = save | Ctrl-Q = quit");
+        self.set_status_message("HELP: Ctrl-S = save | Ctrl-Q = quit | Ctrl-F = find");
         match path {
             Some(path) => self.open(path),
             _ => {}
@@ -131,6 +131,9 @@ impl Editor {
                 }
                 event::Key::Ctrl('s') => {
                     res = self.save();
+                }
+                event::Key::Ctrl('f') => {
+                    res = self.find();
                 }
                 k @ (event::Key::Up
                 | event::Key::Left
@@ -518,8 +521,6 @@ impl Editor {
             self.content.delete_char(self.cursor_y, col_idx)?;
             self.cursor_x -= 1;
             self.dirty = true;
-
-            Ok(())
         } else {
             // case of first line, there is no previous string.
             // do notihng
@@ -536,8 +537,9 @@ impl Editor {
             self.dirty = true;
             self.cursor_y -= 1;
             self.cursor_x = cursor_x;
-            Err(Box::new(Error::new("unimplemented delete on head of row")))
         }
+
+        Ok(())
     }
 
     fn insert_new_line(&mut self) -> Result<(), Box<dyn error::Error>> {
@@ -602,5 +604,23 @@ impl Editor {
                 _ => {}
             };
         }
+    }
+
+    fn find(&mut self) -> Result<(), Box<dyn error::Error>> {
+        let query = self.prompt("find as: ");
+        match query {
+            Some(q) => {
+                if let Some((row, col)) = self.content.find(&q) {
+                    self.cursor_y = row;
+                    self.cursor_x = col;
+                    self.row_offset = self.num_rows();
+                }
+            },
+            None => {
+                self.set_status_message("find aborted");
+            }
+        }
+
+        Ok(())
     }
 }
