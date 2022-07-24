@@ -506,8 +506,6 @@ impl Editor {
     }
 
     fn insert_char(&mut self, c: char) -> Result<(), Box<dyn error::Error>> {
-        // for Debug
-        self.set_status_message(format!("cursor_y: {}, cursor_x: {}", self.cursor_y, self.cursor_x));
         self.content.insert_char(self.cursor_y, self.cursor_x, c)?;
         self.cursor_x += 1;
         self.dirty = true;
