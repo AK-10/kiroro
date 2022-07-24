@@ -198,6 +198,7 @@ impl Editor {
             event::Key::Char('w') | event::Key::Up => {
                 if 0 < self.cursor_y {
                     self.cursor_y -= 1;
+                    self.cursor_x = std::cmp::min(self.current_row().map_or(0, |row| row.row.len()), self.cursor_x);
                 }
             }
             // left Left Arrow is \x1b[D
@@ -222,7 +223,9 @@ impl Editor {
             event::Key::Char('s') | event::Key::Down => {
                 if self.cursor_y < self.num_rows() {
                     self.cursor_y += 1;
+                    self.cursor_x = std::cmp::min(self.current_row().map_or(0, |row| row.row.len()), self.cursor_x);
                 }
+
             }
             // right Right Arrow is \x1b[C
             event::Key::Char('d') | event::Key::Right => {
