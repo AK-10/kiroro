@@ -8,7 +8,7 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::raw::RawTerminal;
 
-use crate::{content::*, row::*, QUIT_TIMES, TAB_STOP, VERSION};
+use crate::{content::*, row::*, QUIT_TIMES, VERSION};
 
 pub struct EditorConfig {
     pub cols: usize,
@@ -450,7 +450,7 @@ impl Editor {
     }
 
     fn draw_status_bar(&mut self) {
-        // ]x1b[7m is reverse background and character color
+        // \x1b[7m is reverse background and character color
         print!("\x1b[7m");
         // display filename
         let noname = "[No Name]".to_string();
@@ -499,19 +499,9 @@ impl Editor {
     }
 
     fn cursor_x_to_render_x(&mut self) {
-        let mut render_x = 0;
-
         if let Some(row) = self.current_row() {
-            for c in row.raw.chars().take(self.cursor_x) {
-                if c == '\t' {
-                    render_x += TAB_STOP - (render_x % TAB_STOP);
-                } else {
-                    render_x += 1;
-                }
-            }
+            self.render_x = row.convert_index_raw_to_render(self.cursor_x);
         }
-
-        self.render_x = render_x.into();
     }
 
     fn insert_char(&mut self, c: char) -> Result<(), Box<dyn error::Error>> {
