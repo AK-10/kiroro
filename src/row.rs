@@ -26,28 +26,28 @@ impl Error {
 }
 
 pub struct Row {
-    pub row: String,
+    pub raw: String,
     pub render: String,
 }
 
 impl Row {
-    pub fn new<T>(row: T) -> Self
+    pub fn new<T>(raw: T) -> Self
     where
         T: Into<String> + Clone,
     {
-        let row = row.into();
-        let render = String::with_capacity(row.len());
+        let raw = raw.into();
+        let render = String::with_capacity(raw.len());
 
-        let mut row = Self { row, render };
+        let mut row = Self { raw, render };
         row.update_render();
 
         row
     }
 
     pub fn insert(&mut self, n: usize, c: char) -> Result<(), Box<dyn error::Error>> {
-        if n <= self.row.len() {
+        if n <= self.raw.len() {
             // O(n) operation
-            self.row.insert(n, c);
+            self.raw.insert(n, c);
             self.update_render();
             Ok(())
         } else {
@@ -57,20 +57,20 @@ impl Row {
     }
 
     pub fn delete(&mut self, n: usize) -> Result<(), Box<dyn error::Error>> {
-        if n <= self.row.len() {
-            self.row.remove(n);
+        if n <= self.raw.len() {
+            self.raw.remove(n);
             self.update_render();
             Ok(())
         } else {
-            let c = self.row.chars().nth(n).unwrap_or('\0');
+            let c = self.raw.chars().nth(n).unwrap_or('\0');
             let msg = format!("failed insert index: {}, char: {}", n, c);
             Err(Box::new(Error::new_write(msg)))
         }
     }
 
     pub fn split(&self, pivot: usize) -> Result<(Row, Row), Box<dyn error::Error>> {
-        if pivot <= self.row.len() {
-            let (first, second) = self.row.split_at(pivot);
+        if pivot <= self.raw.len() {
+            let (first, second) = self.raw.split_at(pivot);
             Ok((Row::new(first), Row::new(second)))
         } else {
             let msg = format!("failed split index out of range. index: {}", &pivot);
@@ -81,7 +81,7 @@ impl Row {
     pub fn update_render(&mut self) {
         let mut render = String::new();
         let mut index = 0;
-        (&self.row).chars().for_each(|c| {
+        (&self.raw).chars().for_each(|c| {
             if c == '\t' {
                 render.push(' ');
                 index += 1;
@@ -97,4 +97,10 @@ impl Row {
 
         self.render = render;
     }
+
+    // pub fn convert_index_raw_to_render(&self) {
+    // }
+
+    // pub fn convert_index_render_to_raw(&self) {
+    // }
 }

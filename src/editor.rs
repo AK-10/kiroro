@@ -46,6 +46,7 @@ impl fmt::Display for Error {
 impl error::Error for Error {}
 
 impl Error {
+    #[allow(dead_code)]
     pub fn new<T>(msg: T) -> Self
     where
         T: Into<String>,
@@ -201,7 +202,10 @@ impl Editor {
             event::Key::Up => {
                 if 0 < self.cursor_y {
                     self.cursor_y -= 1;
-                    self.cursor_x = std::cmp::min(self.current_row().map_or(0, |row| row.row.len()), self.cursor_x);
+                    self.cursor_x = std::cmp::min(
+                        self.current_row().map_or(0, |row| row.raw.len()),
+                        self.cursor_x,
+                    );
                 }
             }
             // left Left Arrow is \x1b[D
@@ -212,8 +216,8 @@ impl Editor {
                     self.cursor_y -= 1;
                     match self.current_row() {
                         Some(current_row) => {
-                            self.cursor_x = if 0 < current_row.row.len() {
-                                current_row.row.len()
+                            self.cursor_x = if 0 < current_row.raw.len() {
+                                current_row.raw.len()
                             } else {
                                 0
                             };
@@ -226,14 +230,16 @@ impl Editor {
             event::Key::Down => {
                 if self.cursor_y < self.num_rows() {
                     self.cursor_y += 1;
-                    self.cursor_x = std::cmp::min(self.current_row().map_or(0, |row| row.row.len()), self.cursor_x);
+                    self.cursor_x = std::cmp::min(
+                        self.current_row().map_or(0, |row| row.raw.len()),
+                        self.cursor_x,
+                    );
                 }
-
             }
             // right Right Arrow is \x1b[C
             event::Key::Right => {
                 if let Some(current_row) = self.current_row() {
-                    let len = current_row.row.len();
+                    let len = current_row.raw.len();
                     if 0 < len && self.cursor_x < len {
                         self.cursor_x += 1;
                     } else {
@@ -264,7 +270,7 @@ impl Editor {
             // colud be \x1b[4~, \x1b[8~, \x1b[F, \x1b[0F
             event::Key::End => {
                 if let Some(current_row) = self.current_row() {
-                    self.cursor_x = current_row.row.len()
+                    self.cursor_x = current_row.raw.len()
                 }
             }
             // del is \x1b[3~
@@ -279,8 +285,8 @@ impl Editor {
         // if cursor_x > row_len, cursor_x = row_len.
         match self.current_row() {
             Some(row) => {
-                if self.cursor_x > row.row.len() {
-                    self.cursor_x = row.row.len();
+                if self.cursor_x > row.raw.len() {
+                    self.cursor_x = row.raw.len();
                 }
             }
             None => {}
@@ -496,7 +502,7 @@ impl Editor {
         let mut render_x = 0;
 
         if let Some(row) = self.current_row() {
-            for c in row.row.chars().take(self.cursor_x) {
+            for c in row.raw.chars().take(self.cursor_x) {
                 if c == '\t' {
                     render_x += TAB_STOP - (render_x % TAB_STOP);
                 } else {
@@ -532,7 +538,7 @@ impl Editor {
                 .content
                 .rows
                 .get(self.cursor_y - 1)
-                .map_or(0, |r| r.row.len());
+                .map_or(0, |r| r.raw.len());
             self.content.concatenate_previous_row(self.cursor_y)?;
             self.dirty = true;
             self.cursor_y -= 1;
@@ -615,7 +621,7 @@ impl Editor {
                     self.cursor_x = col;
                     self.row_offset = self.num_rows();
                 }
-            },
+            }
             None => {
                 self.set_status_message("find aborted");
             }

@@ -50,7 +50,7 @@ impl Content {
     pub fn rows_to_string(&self) -> String {
         self.rows
             .iter()
-            .map(|row| row.row.clone())
+            .map(|row| row.raw.clone())
             .collect::<Vec<String>>()
             .join(&"\n")
     }
@@ -111,7 +111,7 @@ impl Content {
         } else if 0 < row_idx && row_idx < self.rows.len() {
             let row_string = self.rows.remove(row_idx);
             if let Some(prev_row) = self.rows.get_mut(row_idx - 1) {
-                prev_row.row.push_str(&*row_string.row);
+                prev_row.raw.push_str(&*row_string.raw);
                 prev_row.update_render();
             }
             Ok(())
