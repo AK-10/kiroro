@@ -195,14 +195,14 @@ impl Editor {
 
     fn update_cursor_state(&mut self, key: &event::Key) {
         match key {
-            event::Key::Char('w') | event::Key::Up => {
+            event::Key::Up => {
                 if 0 < self.cursor_y {
                     self.cursor_y -= 1;
                     self.cursor_x = std::cmp::min(self.current_row().map_or(0, |row| row.row.len()), self.cursor_x);
                 }
             }
             // left Left Arrow is \x1b[D
-            event::Key::Char('a') | event::Key::Left => {
+            event::Key::Left => {
                 if 0 < self.cursor_x {
                     self.cursor_x -= 1;
                 } else if 0 < self.cursor_y {
@@ -220,7 +220,7 @@ impl Editor {
                 }
             }
             // down Down Arrow is \x1b[B
-            event::Key::Char('s') | event::Key::Down => {
+            event::Key::Down => {
                 if self.cursor_y < self.num_rows() {
                     self.cursor_y += 1;
                     self.cursor_x = std::cmp::min(self.current_row().map_or(0, |row| row.row.len()), self.cursor_x);
@@ -228,7 +228,7 @@ impl Editor {
 
             }
             // right Right Arrow is \x1b[C
-            event::Key::Char('d') | event::Key::Right => {
+            event::Key::Right => {
                 if let Some(current_row) = self.current_row() {
                     let len = current_row.row.len();
                     if 0 < len && self.cursor_x < len {
