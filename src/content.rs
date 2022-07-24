@@ -129,7 +129,7 @@ impl Content {
     pub fn find(&self, query: &String) -> Option<(usize, usize)> {
         for (row_idx, row) in self.rows.iter().enumerate() {
             if let Some(col_idx) = row.render.find(query) {
-                return Some((row_idx, col_idx));
+                return Some((row_idx, row.convert_index_render_to_raw(col_idx)));
             }
         }
 

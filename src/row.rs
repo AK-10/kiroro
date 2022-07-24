@@ -98,19 +98,33 @@ impl Row {
         self.render = render;
     }
 
-    pub fn convert_index_raw_to_render(&self, index: usize) -> usize {
-        let mut render = 0;
-        for c in self.raw.chars().take(index) {
+    pub fn convert_index_raw_to_render(&self, raw_index: usize) -> usize {
+        let mut render_index = 0;
+        for c in self.raw.chars().take(raw_index) {
             if c == '\t' {
-                render += TAB_STOP - (render % TAB_STOP);
+                render_index += TAB_STOP - (render_index % TAB_STOP);
             } else {
-                render += 1;
+                render_index += 1;
             }
         }
 
-        render.into()
+        render_index.into()
     }
 
-    // pub fn convert_index_render_to_raw(&self) {
-    // }
+    pub fn convert_index_render_to_raw(&self, render_index: usize) -> usize {
+        let mut index = 0usize;
+        for (i, c) in self.raw.chars().enumerate() {
+            if c == '\t' {
+                index += TAB_STOP - (index % TAB_STOP);
+            } else {
+                index += 1;
+            }
+
+            if index > render_index {
+                return i.into();
+            }
+        }
+
+        self.raw.len()
+    }
 }
