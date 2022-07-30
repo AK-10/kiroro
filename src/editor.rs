@@ -551,7 +551,7 @@ impl Editor {
     fn save(&mut self) -> Result<(), Box<dyn error::Error>> {
         self.set_status_message("save mode");
         if self.content.is_phantom() {
-            match self.prompt("save as: ") {
+            match self.prompt("save as: ", None) {
                 Some(input) => self.content.filename = Some(input),
                 None => {
                     self.set_status_message("save aborted");
@@ -577,7 +577,11 @@ impl Editor {
         self.content.rows.len()
     }
 
-    fn prompt(&mut self, prompt: &str) -> Option<String> {
+    fn prompt(
+        &mut self,
+        prompt: &str,
+        callback: Option<fn(&String, &event::Key)>,
+    ) -> Option<String> {
         let mut buf = String::with_capacity(128);
 
         loop {
@@ -585,9 +589,13 @@ impl Editor {
             self.set_status_message(msg);
             self.refresh_screen();
 
-            match self.read_key() {
+            let key = self.read_key();
+
+            match &key {
+                // Enter
                 event::Key::Char('\n') | event::Key::Char('\r') => {
                     if !buf.is_empty() {
+                        callback.map(|cb| cb(&buf, &key));
                         return Some(buf);
                     }
                 }
@@ -595,15 +603,20 @@ impl Editor {
                     buf.pop();
                 }
                 // cancel the input prompt
-                event::Key::Esc => return None,
-                event::Key::Char(c) => buf.push(c),
+                event::Key::Esc => {
+                    callback.map(|cb| cb(&buf, &key));
+                    return None;
+                }
+                event::Key::Char(c) => buf.push(*c),
                 _ => {}
             };
+
+            callback.map(|cb| cb(&buf, &key));
         }
     }
 
     fn find(&mut self) -> Result<(), Box<dyn error::Error>> {
-        let query = self.prompt("find as: ");
+        let query = self.prompt("find as: ", None);
         match query {
             Some(q) => {
                 if let Some((row, col)) = self.content.find(&q) {
