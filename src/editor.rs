@@ -134,7 +134,8 @@ impl Editor {
                     res = self.save();
                 }
                 event::Key::Ctrl('f') => {
-                    res = self.find();
+                    // res = self.find();
+                    self.find();
                 }
                 k @ (event::Key::Up
                 | event::Key::Left
@@ -580,7 +581,7 @@ impl Editor {
     fn prompt(
         &mut self,
         prompt: &str,
-        callback: Option<fn(&String, &event::Key)>,
+        callback: Option<fn(&mut Self, &String, &event::Key)>,
     ) -> Option<String> {
         let mut buf = String::with_capacity(128);
 
@@ -595,7 +596,7 @@ impl Editor {
                 // Enter
                 event::Key::Char('\n') | event::Key::Char('\r') => {
                     if !buf.is_empty() {
-                        callback.map(|cb| cb(&buf, &key));
+                        callback.map(|cb| cb(self, &buf, &key));
                         return Some(buf);
                     }
                 }
@@ -604,32 +605,35 @@ impl Editor {
                 }
                 // cancel the input prompt
                 event::Key::Esc => {
-                    callback.map(|cb| cb(&buf, &key));
+                    callback.map(|cb| cb(self, &buf, &key));
                     return None;
                 }
                 event::Key::Char(c) => buf.push(*c),
                 _ => {}
             };
 
-            callback.map(|cb| cb(&buf, &key));
+            callback.map(|cb| cb(self, &buf, &key));
         }
     }
 
-    fn find(&mut self) -> Result<(), Box<dyn error::Error>> {
-        let query = self.prompt("find as: ", None);
-        match query {
-            Some(q) => {
-                if let Some((row, col)) = self.content.find(&q) {
-                    self.cursor_y = row;
-                    self.cursor_x = col;
-                    self.row_offset = self.num_rows();
-                }
-            }
-            None => {
+    fn find_callback(&mut self, query: &String, key: &event::Key) {
+        match key {
+            // leave search mode by enter or escape
+            event::Key::Char('\n') | event::Key::Char('\r') | event::Key::Esc => {
                 self.set_status_message("find aborted");
+                return;
             }
-        }
+            _ => {}
+        };
 
-        Ok(())
+        if let Some((row, col)) = self.content.find(query) {
+            self.cursor_y = row;
+            self.cursor_x = col;
+            self.row_offset = self.num_rows();
+        }
+    }
+
+    fn find(&mut self) {
+        self.prompt("find as: ", Some(Self::find_callback));
     }
 }
