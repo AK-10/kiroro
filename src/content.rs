@@ -7,6 +7,13 @@ pub struct Content {
 }
 
 #[derive(Debug)]
+pub enum SearchDirection {
+    Forward,
+    Backward,
+    None,
+}
+
+#[derive(Debug)]
 struct Error(String);
 
 impl fmt::Display for Error {
@@ -126,10 +133,55 @@ impl Content {
     }
 
     // return (row idx, col idx)
-    pub fn find(&self, query: &String) -> Option<(usize, usize)> {
-        for (row_idx, row) in self.rows.iter().enumerate() {
-            if let Some(col_idx) = row.render.find(query) {
-                return Some((row_idx, row.convert_index_render_to_raw(col_idx)));
+    pub fn find(
+        &self,
+        query: &String,
+        row_idx: usize,
+        col_idx: usize,
+        direction: &SearchDirection,
+    ) -> Option<(usize, usize)> {
+        match direction {
+            SearchDirection::Forward => {
+                for (row_i, row) in self.rows[row_idx..].iter().enumerate() {
+                    if row_i == row_idx {
+                        let idx = col_idx + 1;
+                        if idx > row.render.len() {
+                            continue;
+                        }
+                        if let Some(col_i) = row.render[idx..].find(query) {
+                            return Some((row_i, row.convert_index_render_to_raw(idx + col_i)))
+                        }
+                    } else {
+                        if let Some(col_i) = row.render.find(query) {
+                            return Some((row_i, row.convert_index_render_to_raw(col_i)));
+                        }
+                    }
+                }
+            }
+            SearchDirection::Backward => {
+                for (row_i, row) in self.rows[..row_idx].iter().enumerate().rev() {
+                    if row_i == row_idx {
+                        let idx = col_idx.checked_sub(1);
+                        if let Some(idx) = idx {
+                            if let Some(col_i) = row.render[..idx].find(query) {
+                                return Some((row_i, row.convert_index_render_to_raw(col_i)))
+                            }
+                        } else {
+                            continue;
+                        }
+                    } else {
+                        if let Some(col_i) = row.render.find(query) {
+                            return Some((row_i, row.convert_index_render_to_raw(col_i)));
+                        }
+                    }
+                }
+            }
+            SearchDirection::None => {
+                for (row_i, row) in self.rows.iter().enumerate() {
+                    if let Some(col_i) = row.render.find(query) {
+                        return Some((row_i, row.convert_index_render_to_raw(col_i)));
+                    }
+                }
             }
         }
 

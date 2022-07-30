@@ -586,7 +586,7 @@ impl Editor {
         let mut buf = String::with_capacity(128);
 
         loop {
-            let msg = format!("{}{}", prompt, buf);
+            let msg = format!("x: {} y: {} len: {} | {}{}", self.cursor_x, self.cursor_y, self.current_row().map_or(0, |x| x.render.len()), prompt, buf);
             self.set_status_message(msg);
             self.refresh_screen();
 
@@ -617,16 +617,27 @@ impl Editor {
     }
 
     fn find_callback(&mut self, query: &String, key: &event::Key) {
-        match key {
+        let direction = match key {
             // leave search mode by enter or escape
             event::Key::Char('\n') | event::Key::Char('\r') | event::Key::Esc => {
                 self.set_status_message("find aborted");
                 return;
             }
-            _ => {}
+            event::Key::Right | event::Key::Down => {
+                // forward
+                SearchDirection::Forward
+            }
+            event::Key::Left | event::Key::Up => {
+                // backward
+                SearchDirection::Backward
+            }
+            _ => SearchDirection::None,
         };
 
-        if let Some((row, col)) = self.content.find(query) {
+        if let Some((row, col)) = self
+            .content
+            .find(query, self.cursor_y, self.cursor_x, &direction)
+        {
             self.cursor_x = col;
             self.cursor_y = row;
             self.row_offset = self.num_rows();
