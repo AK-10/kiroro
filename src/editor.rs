@@ -627,13 +627,25 @@ impl Editor {
         };
 
         if let Some((row, col)) = self.content.find(query) {
-            self.cursor_y = row;
             self.cursor_x = col;
+            self.cursor_y = row;
             self.row_offset = self.num_rows();
         }
     }
 
     fn find(&mut self) {
-        self.prompt("find as: ", Some(Self::find_callback));
+        let saved_cursor_x = self.cursor_x;
+        let saved_cursor_y = self.cursor_y;
+        let saved_row_offset = self.row_offset;
+        let saved_col_offset = self.col_offset;
+
+        let query = self.prompt("find as: ", Some(Self::find_callback));
+        // when user presses Esc, query is None.
+        if query.is_none() {
+            self.cursor_x = saved_cursor_x;
+            self.cursor_y = saved_cursor_y;
+            self.row_offset = saved_row_offset;
+            self.col_offset = saved_col_offset;
+        }
     }
 }
