@@ -150,7 +150,10 @@ impl Content {
                             continue;
                         }
                         if let Some(col_i) = row.render[idx..].find(query) {
-                            return Some((row_idx + row_i, row.convert_index_render_to_raw(idx + col_i)));
+                            return Some((
+                                row_idx + row_i,
+                                row.convert_index_render_to_raw(idx + col_i),
+                            ));
                         }
                     } else {
                         if let Some(col_i) = row.render.find(query) {
@@ -160,18 +163,17 @@ impl Content {
                 }
             }
             SearchDirection::Backward => {
-                for (row_i, row) in self.rows[..row_idx].iter().enumerate().rev() {
-                    if row_i == 0 {
-                        let idx = col_idx.checked_sub(1);
-                        if let Some(idx) = idx {
-                            if let Some(col_i) = row.render[..idx].find(query) {
-                                return Some((row_i, row.convert_index_render_to_raw(col_i)));
-                            }
-                        } else {
+                for (row_i, row) in self.rows[..=row_idx].iter().enumerate().rev() {
+                    if row_i == row_idx {
+                        if col_idx > row.render.len() {
                             continue;
                         }
+
+                        if let Some(col_i) = row.render[..=col_idx].rfind(query) {
+                            return Some((row_i, row.convert_index_render_to_raw(col_i)));
+                        }
                     } else {
-                        if let Some(col_i) = row.render.find(query) {
+                        if let Some(col_i) = row.render.rfind(query) {
                             return Some((row_i, row.convert_index_render_to_raw(col_i)));
                         }
                     }

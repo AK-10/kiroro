@@ -586,15 +586,8 @@ impl Editor {
         let mut buf = String::with_capacity(128);
 
         loop {
-            let msg = format!(
-                "x: {} y: {} len: {} | {}{}",
-                self.cursor_x,
-                self.cursor_y,
-                self.current_row().unwrap().render.len(),
-                prompt,
-                buf
-            );
-            // self.set_status_message(msg);
+            let msg = format!("{}{}", prompt, buf);
+            self.set_status_message(msg);
             self.refresh_screen();
 
             let key = self.read_key();
@@ -645,10 +638,6 @@ impl Editor {
             .content
             .find(query, self.cursor_y, self.cursor_x, &direction)
         {
-            self.set_status_message(format!(
-                "x: {}, y: {} | col: {}, row: {}",
-                self.cursor_x, self.cursor_y, col, row
-            ));
             self.cursor_x = col;
             self.cursor_y = row;
             self.row_offset = self.num_rows();
