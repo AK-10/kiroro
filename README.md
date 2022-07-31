@@ -29,5 +29,5 @@ Ctrl-S: Save
 ```
 
 Search is incremental and able to move next/previous search candidate by arrow key.
-next: right or down key
-previous: left or up key
+- next: right or down key
+- previous: left or up key
